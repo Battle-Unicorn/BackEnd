@@ -1,0 +1,34 @@
+{
+  "mobile_id": "MOB_001",
+  "timestamp": "2025-10-04T21:20:00Z",
+  "dream_keywords": [
+    {
+      "key_words": "flying airplane clouds sky",
+      "place": "high above mountains"
+    },
+    {
+      "key_words": "ocean waves swimming dolphins",
+      "place": "deep blue sea"
+    },
+    {
+      "key_words": "forest trees animals birds",
+      "place": "enchanted woodland"
+    },
+    {
+      "key_words": "city lights buildings traffic",
+      "place": "downtown metropolis"
+    },
+    {
+      "key_words": "home family kitchen dinner",
+      "place": "childhood house"
+    },
+    {
+      "key_words": "school classroom teacher students",
+      "place": "old university building"
+    },
+    {
+      "key_words": "space stars planets rocket",
+      "place": "distant galaxy"
+    }
+  ]
+}
