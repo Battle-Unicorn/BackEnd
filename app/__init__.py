@@ -1,5 +1,5 @@
 from flask import Flask
-from .routes import main_bp
+from .routes import main_bp, mobile_bp, embedded_bp
 from .models import db
 from .config import Config
 
@@ -10,5 +10,7 @@ def create_app():
 
     db.init_app(app)  # Inicjalizacja bazy danych
     app.register_blueprint(main_bp)
+    app.register_blueprint(embedded_bp)
+    app.register_blueprint(mobile_bp)
 
     return app
