@@ -1,0 +1,86 @@
+{
+  "device_id": "Dev_001",
+  "timestamp": "2025-10-04T21:15:00Z",
+  "sensor_data": {
+    "plethysmometer": [
+      {"timestamp": "2025-10-04T21:14:30Z", "heart_rate": 75, "spo2": 98.1},
+      {"timestamp": "2025-10-04T21:14:31Z", "heart_rate": 76, "spo2": 97.9},
+      {"timestamp": "2025-10-04T21:14:32Z", "heart_rate": 74, "spo2": 98.0},
+      {"timestamp": "2025-10-04T21:14:33Z", "heart_rate": 77, "spo2": 97.8},
+      {"timestamp": "2025-10-04T21:14:34Z", "heart_rate": 75, "spo2": 98.1},
+      {"timestamp": "2025-10-04T21:14:35Z", "heart_rate": 76, "spo2": 98.2},
+      {"timestamp": "2025-10-04T21:14:36Z", "heart_rate": 78, "spo2": 97.9},
+      {"timestamp": "2025-10-04T21:14:37Z", "heart_rate": 77, "spo2": 98.0},
+      {"timestamp": "2025-10-04T21:14:38Z", "heart_rate": 75, "spo2": 98.1},
+      {"timestamp": "2025-10-04T21:14:39Z", "heart_rate": 76, "spo2": 98.3},
+      {"timestamp": "2025-10-04T21:14:40Z", "heart_rate": 78, "spo2": 97.8},
+      {"timestamp": "2025-10-04T21:14:41Z", "heart_rate": 76, "spo2": 98.2},
+      {"timestamp": "2025-10-04T21:14:42Z", "heart_rate": 77, "spo2": 97.9},
+      {"timestamp": "2025-10-04T21:14:43Z", "heart_rate": 79, "spo2": 98.0},
+      {"timestamp": "2025-10-04T21:14:44Z", "heart_rate": 78, "spo2": 98.1},
+      {"timestamp": "2025-10-04T21:14:45Z", "heart_rate": 76, "spo2": 97.9},
+      {"timestamp": "2025-10-04T21:14:46Z", "heart_rate": 75, "spo2": 98.2},
+      {"timestamp": "2025-10-04T21:14:47Z", "heart_rate": 77, "spo2": 98.1},
+      {"timestamp": "2025-10-04T21:14:48Z", "heart_rate": 79, "spo2": 97.8},
+      {"timestamp": "2025-10-04T21:14:49Z", "heart_rate": 78, "spo2": 98.0},
+      {"timestamp": "2025-10-04T21:14:50Z", "heart_rate": 76, "spo2": 98.1},
+      {"timestamp": "2025-10-04T21:14:51Z", "heart_rate": 77, "spo2": 97.9},
+      {"timestamp": "2025-10-04T21:14:52Z", "heart_rate": 75, "spo2": 98.3},
+      {"timestamp": "2025-10-04T21:14:53Z", "heart_rate": 78, "spo2": 98.2},
+      {"timestamp": "2025-10-04T21:14:54Z", "heart_rate": 79, "spo2": 98.0},
+      {"timestamp": "2025-10-04T21:14:55Z", "heart_rate": 77, "spo2": 98.1},
+      {"timestamp": "2025-10-04T21:14:56Z", "heart_rate": 76, "spo2": 97.8},
+      {"timestamp": "2025-10-04T21:14:57Z", "heart_rate": 78, "spo2": 98.0},
+      {"timestamp": "2025-10-04T21:14:58Z", "heart_rate": 79, "spo2": 98.2},
+      {"timestamp": "2025-10-04T21:14:59Z", "heart_rate": 77, "spo2": 98.1}
+    ],
+    "mpu": {
+      "sleep_flag": true,
+      "samples": [
+        {"timestamp": "2025-10-04T21:14:30Z", "acceleration": {"x": 0.01, "y": -0.02, "z": 0.98}, "rotation": {"x": 0.1, "y": 0.2, "z": 0.1}, "temperature": 36.8},
+        {"timestamp": "2025-10-04T21:14:31Z", "acceleration": {"x": 0.02, "y": -0.01, "z": 0.97}, "rotation": {"x": 0.1, "y": 0.3, "z": 0.1}, "temperature": 36.9}
+      ]
+    },
+    "emg": {
+      "atonia_flag": true,
+      "samples": [
+        {"timestamp": "2025-10-04T21:14:30Z", "muscle_tone": 2.1},
+        {"timestamp": "2025-10-04T21:14:31Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:32Z", "muscle_tone": 1.9},
+        {"timestamp": "2025-10-04T21:14:33Z", "muscle_tone": 2.2},
+        {"timestamp": "2025-10-04T21:14:34Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:35Z", "muscle_tone": 1.8},
+        {"timestamp": "2025-10-04T21:14:36Z", "muscle_tone": 2.1},
+        {"timestamp": "2025-10-04T21:14:37Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:38Z", "muscle_tone": 1.9},
+        {"timestamp": "2025-10-04T21:14:39Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:40Z", "muscle_tone": 1.8},
+        {"timestamp": "2025-10-04T21:14:41Z", "muscle_tone": 2.1},
+        {"timestamp": "2025-10-04T21:14:42Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:43Z", "muscle_tone": 1.9},
+        {"timestamp": "2025-10-04T21:14:44Z", "muscle_tone": 2.2},
+        {"timestamp": "2025-10-04T21:14:45Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:46Z", "muscle_tone": 1.8},
+        {"timestamp": "2025-10-04T21:14:47Z", "muscle_tone": 2.1},
+        {"timestamp": "2025-10-04T21:14:48Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:49Z", "muscle_tone": 1.9},
+        {"timestamp": "2025-10-04T21:14:50Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:51Z", "muscle_tone": 1.8},
+        {"timestamp": "2025-10-04T21:14:52Z", "muscle_tone": 2.1},
+        {"timestamp": "2025-10-04T21:14:53Z", "muscle_tone": 2.2},
+        {"timestamp": "2025-10-04T21:14:54Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:55Z", "muscle_tone": 1.9},
+        {"timestamp": "2025-10-04T21:14:56Z", "muscle_tone": 1.8},
+        {"timestamp": "2025-10-04T21:14:57Z", "muscle_tone": 2.1},
+        {"timestamp": "2025-10-04T21:14:58Z", "muscle_tone": 2.0},
+        {"timestamp": "2025-10-04T21:14:59Z", "muscle_tone": 1.9}
+      ]
+    }
+  },
+  "response": {
+    "status": "received",
+    "device_id": "Dev_001",
+    "samples_received": 30,
+    "received_at": "2025-10-04T21:15:01Z"
+  }
+}

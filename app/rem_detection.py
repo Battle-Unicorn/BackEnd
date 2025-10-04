@@ -19,36 +19,53 @@ def rem_detection(plethysmometer_data: list, sleep_flag: bool, atonia_flag: bool
     """
     global hr_history
     
+    # Sprawdzamy typ danych
+    if not isinstance(plethysmometer_data, list):
+        print(f"ERROR: plethysmometer_data nie jest lista: {type(plethysmometer_data)}")
+        return False
+    
     # Dodajemy nowe dane do historii
     current_time = datetime.now()
     
-    for entry in plethysmometer_data:
-        hr_entry = {
-            'heart_rate': entry['heart_rate'],
-            'timestamp': entry['timestamp'],
-            'received_at': current_time
-        }
-        hr_history.append(hr_entry)
+    for i, entry in enumerate(plethysmometer_data):
+        # DEBUG: sprawdzamy każdy element
+        if not isinstance(entry, dict):
+            print(f"ERROR: Element {i} nie jest slownikiem: {type(entry)} = {entry}")
+            continue
+            
+        if 'heart_rate' not in entry:
+            print(f"ERROR: Element {i} nie ma klucza 'heart_rate': {entry}")
+            continue
+        try:
+            hr_entry = {
+                'heart_rate': entry['heart_rate'],
+                'timestamp': entry.get('timestamp', current_time.isoformat()),
+                'received_at': current_time
+            }
+            hr_history.append(hr_entry)
+        except KeyError as e:
+            print(f"ERROR: Brak klucza {e} w entry: {entry}")
+            continue
     
     # Czyścimy stare dane (starsze niż 15 minut)
     cutoff_time = current_time - timedelta(minutes=15)
     hr_history = [entry for entry in hr_history if entry['received_at'] > cutoff_time]
     
-    print(f"📊 Historia HR: {len(hr_history)} próbek z ostatnich 15 minut")
+    print(f"Historia HR: {len(hr_history)} probek z ostatnich 15 minut")
     
     # Sprawdzamy czy mamy wystarczająco danych (co najmniej 15 minut)
     if len(hr_history) < 900:  # 15 minut * 60 sekund
-        print(f"⚠️ Za mało danych: {len(hr_history)}/900 próbek")
+        print(f"Za malo danych: {len(hr_history)}/900 probek")
         return False
     
     # Warunek 1: Użytkownik musi spać
     if not sleep_flag:
-        print("😴 Brak flagi snu - REM niemożliwy")
+        print("Brak flagi snu - REM niemozliwy")
         return False
     
     # Warunek 2: Musi być atonia mięśni
     if not atonia_flag:
-        print("💪 Brak atonii mięśni - REM niemożliwy")
+        print("Brak atonii miesni - REM niemozliwy")
         return False
     
     # Sprawdzamy wzrost HR
@@ -56,10 +73,10 @@ def rem_detection(plethysmometer_data: list, sleep_flag: bool, atonia_flag: bool
     hr_increased = compare_medium_hr(medium_hr_15min)
     
     if hr_increased:
-        print("❤️ Wykryto wzrost HR + wszystkie warunki spełnione → REM DETECTED!")
+        print("Wykryto wzrost HR + wszystkie warunki spelnione -> REM DETECTED!")
         return True
     else:
-        print("📉 Brak wzrostu HR - REM nie wykryty")
+        print("Brak wzrostu HR - REM nie wykryty")
         return False
 
 def check_medium_hr() -> float:
@@ -81,7 +98,7 @@ def check_medium_hr() -> float:
     total_hr = sum(entry['heart_rate'] for entry in last_15_min)
     medium_hr = total_hr / len(last_15_min)
     
-    print(f"📈 Średni HR z 15 minut: {medium_hr:.1f} BPM")
+    print(f"Sredni HR z 15 minut: {medium_hr:.1f} BPM")
     return medium_hr
 
 def compare_medium_hr(medium_hr_15min: float) -> bool:
@@ -97,7 +114,7 @@ def compare_medium_hr(medium_hr_15min: float) -> bool:
     global hr_history
     
     if len(hr_history) < 30:
-        print("⚠️ Za mało danych do porównania (< 30 sekund)")
+        print("Za malo danych do porownania (< 30 sekund)")
         return False
     
     # Bierzemy ostatnie 30 sekund
@@ -110,8 +127,8 @@ def compare_medium_hr(medium_hr_15min: float) -> bool:
     hr_increase = current_hr - medium_hr_15min
     hr_threshold = 5.0  # Próg wzrostu w BPM
     
-    print(f"💓 HR ostatnie 30s: {current_hr:.1f} BPM")
-    print(f"📊 Wzrost HR: {hr_increase:+.1f} BPM (próg: +{hr_threshold})")
+    print(f"HR ostatnie 30s: {current_hr:.1f} BPM")
+    print(f"Wzrost HR: {hr_increase:+.1f} BPM (prog: +{hr_threshold})")
     
     return hr_increase >= hr_threshold
 
