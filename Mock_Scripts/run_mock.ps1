@@ -14,7 +14,7 @@ if ($httpMethod -ieq "GET") {
     if ($jsonFile -ne "") {
         # Jeśli podano plik JSON, wczytaj dane
         $data = Get-Content -Path "./$jsonFile" -Raw | ConvertFrom-Json
-        $body = $data | ConvertTo-Json
+        $body = $data | ConvertTo-Json -Depth 10 -Compress
     } else {
         # Jeśli nie podano pliku, użyj pustego ciała
         $body = ""
