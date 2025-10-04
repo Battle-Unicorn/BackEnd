@@ -22,6 +22,24 @@ def get_test():
     except Exception as e:
         print(f"Error fetching data from db: {str(e)}")
         return f"Błąd podczas pobierania danych: {str(e)}"
+    
+
+def add_record_to_test(content_value):
+    query = text(
+        """
+        INSERT INTO TEST (content)
+        VALUES (:content_value)
+        """
+    )
+    try:
+        db.session.execute(query, {"content_value": content_value})
+        db.session.commit()
+        return "Rekord został dodany do bazy danych ✅"
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error inserting data into db: {str(e)}")
+        return f"Błąd podczas dodawania danych: {str(e)}"
+
 
 
 
