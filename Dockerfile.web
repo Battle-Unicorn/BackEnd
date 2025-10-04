@@ -1,0 +1,16 @@
+FROM python:3.13
+
+# Ustaw katalog roboczy w kontenerze
+WORKDIR /app
+
+# Skopiuj zależności
+COPY requirements.txt .
+
+# Instaluj zależności
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Skopiuj resztę plików projektu
+COPY . .
+
+# Uruchom aplikację
+CMD ["python", "run.py"]

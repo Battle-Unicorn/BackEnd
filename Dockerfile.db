@@ -1,0 +1,14 @@
+FROM postgres:15
+
+RUN apt-get update && apt-get install -y locales
+
+# Generowanie locale dla języka polskiego
+RUN sed -i -e 's/# pl_PL.UTF-8 UTF-8/pl_PL.UTF-8 UTF-8/' /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
+    locale-gen pl_PL.UTF-8
+
+ENV LANG=pl_PL.UTF-8
+ENV LC_ALL=pl_PL.UTF-8
+
+# Ustawienie domyślnego kodowania dla PostgreSQL
+ENV POSTGRES_INITDB_ARGS="--locale=pl_PL.UTF-8 --encoding=UTF8"
