@@ -13,8 +13,7 @@ def mobile_hello():
 @mobile_bp.route('/mobile/polling')
 def mobile_polling():
     """
-    Endpoint dla aplikacji mobilnej - zwraca dane z sesji o stanie REM
-    i statystyki HR dla ekranu 7 faz REM
+    Endpoint dla aplikacji mobilnej - zwraca dane z sesji
     """
     # Pobieramy dane z sesji
     rem_flag = session.get('rem_flag', False)
@@ -22,12 +21,13 @@ def mobile_polling():
     atonia_flag = session.get('atonia_flag', False)
     #last_update = session.get('last_update')
     device_id = session.get('device_id')
+    current_phase = session.get('rem_phase_count')
     
     # Pobieramy statystyki HR
     hr_stats = get_hr_stats()
-    rem_flag = False
-    if sleep_flag and atonia_flag and rem_flag:
-        rem_flag = True
+    
+    # REM wykrywany gdy wszystkie warunki spełnione
+    # rem_flag już zawiera wynik detekcji z sesji
     
     # Przygotowujemy odpowiedź JSON
     response_data = {
@@ -36,11 +36,12 @@ def mobile_polling():
         "session_data": {
             "rem_detected": rem_flag,
             "sleep_detected": sleep_flag,
+            "atonia_detected": atonia_flag,
             "device_id": device_id
         },
         "hr_statistics": hr_stats,
         "rem_phases": {
-            "current_phase": sleep_phase,
+            "current_phase": current_phase,
         }
     }
     

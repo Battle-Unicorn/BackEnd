@@ -13,6 +13,7 @@ if ($testName -eq "" -or $testName -eq "help") {
     Write-Host "  data     - Testuj endpoint /embedded/data (normalne dane z urzadzenia)" -ForegroundColor White
     Write-Host "  rem      - Testuj endpoint /embedded/data (dane z potencjalnym REM)" -ForegroundColor White
     Write-Host "  status   - Testuj endpoint /embedded/rem_status (sprawdzenie statusu REM)" -ForegroundColor White
+    Write-Host "  mobile_polling   - Testuj endpoint /mobile/polling (dane dla aplikacji mobilnej)" -ForegroundColor White
     Write-Host "  reset    - Testuj endpoint /embedded/reset_rem_counter (reset licznika)" -ForegroundColor White
     Write-Host ""
     Write-Host "Dostepne pliki danych:" -ForegroundColor Yellow
@@ -23,6 +24,7 @@ if ($testName -eq "" -or $testName -eq "help") {
     Write-Host "  .\mock_test.ps1 data" -ForegroundColor Cyan
     Write-Host "  .\mock_test.ps1 rem" -ForegroundColor Cyan
     Write-Host "  .\mock_test.ps1 status" -ForegroundColor Cyan
+    Write-Host "  .\mock_test.ps1 mobile_polling" -ForegroundColor Cyan
     Write-Host "  .\mock_test.ps1 reset" -ForegroundColor Cyan
     exit 0
 }
@@ -40,13 +42,17 @@ switch ($testName.ToLower()) {
         Write-Host ">> Sprawdzanie statusu REM..." -ForegroundColor Yellow
         .\run_mock.ps1 /embedded/rem_status GET
     }
+    "mobile_polling" {
+        Write-Host ">> Testowanie endpointa aplikacji mobilnej..." -ForegroundColor Yellow
+        .\run_mock.ps1 /mobile/polling GET
+    }
     "reset" {
         Write-Host ">> Resetowanie licznika faz REM..." -ForegroundColor Yellow
         .\run_mock.ps1 /embedded/reset_rem_counter POST
     }
     default {
         Write-Host "ERROR: Nieznana komenda: $testName" -ForegroundColor Red
-        Write-Host "Dostepne: data, rem, status, reset" -ForegroundColor Yellow
+        Write-Host "Dostepne: data, rem, status, mobile_polling, reset" -ForegroundColor Yellow
         Write-Host "Uzyj '.\mock_test.ps1 help' aby zobaczyc pomoc" -ForegroundColor Cyan
         exit 1
     }

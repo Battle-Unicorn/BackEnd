@@ -19,7 +19,8 @@ Zbiór skryptów do testowania Flask API dla systemu wykrywania faz REM.
 .\mock_test.ps1 help     # Pomoc
 .\mock_test.ps1 data     # Test normalnych danych
 .\mock_test.ps1 rem      # Test danych REM
-.\mock_test.ps1 status   # Sprawdź status
+.\mock_test.ps1 status   # Sprawdź status (embedded)
+.\mock_test.ps1 mobile_polling   # Sprawdź status (mobile)
 .\mock_test.ps1 reset    # Resetuj licznik
 ```
 
@@ -27,13 +28,15 @@ Zbiór skryptów do testowania Flask API dla systemu wykrywania faz REM.
 ```powershell
 .\run_mock.ps1 /embedded/data POST data_embedded.json
 .\run_mock.ps1 /embedded/rem_status GET
+.\run_mock.ps1 /mobile/polling GET
 .\run_mock.ps1 /embedded/reset_rem_counter POST
 ```
 
 ## Endpointy API:
 
 - `POST /embedded/data` - Odbiera dane z urządzenia
-- `GET /embedded/rem_status` - Zwraca aktualny status REM
+- `GET /embedded/rem_status` - Zwraca aktualny status REM (wersja embedded)
+- `GET /mobile/polling` - Zwraca dane dla aplikacji mobilnej
 - `POST /embedded/reset_rem_counter` - Resetuje licznik faz REM
 
 ## Wymagania:
