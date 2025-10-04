@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, session, request
 from ..rem_detection import get_hr_stats
-from ..sound_gen import process_dream_scenario
 from datetime import datetime
 import json
 import os
@@ -23,7 +22,7 @@ def mobile_polling():
     atonia_flag = session.get('atonia_flag', False)
     #last_update = session.get('last_update')
     device_id = session.get('device_id')
-    current_phase = session.get('rem_phase_count')
+    current_rem_phase = session.get('current_rem_phase', 0)
     
     # Pobieramy statystyki HR
     hr_stats = get_hr_stats()
@@ -43,7 +42,7 @@ def mobile_polling():
         },
         "hr_statistics": hr_stats,
         "rem_phases": {
-            "current_phase": current_phase,
+            "current_phase": current_rem_phase,
         }
     }
     
@@ -106,41 +105,6 @@ def load_dream_scenarios():
             "status": "error",
             "message": f"Error loading scenarios: {str(e)}"
         }), 500
-
-@mobile_bp.route('/mobile/next_scenario')
-def get_next_scenario():
-    """
-    Endpoint do pobierania kolejnego scenariusza snu z sesji
-    """
-    scenarios = session.get('dream_scenarios', [])
-    current_index = session.get('current_scenario_index', 0)
-    
-    if not scenarios:
-        return jsonify({
-            "status": "error",
-            "message": "No scenarios loaded. Please load scenarios first."
-        }), 400
-    
-    if current_index >= len(scenarios):
-        # Resetujemy indeks na początek jeśli doszliśmy do końca
-        current_index = 0
-        session['current_scenario_index'] = current_index
-    
-    current_scenario = scenarios[current_index]
-    
-    # Przetwarzamy scenariusz przez funkcję z sound_gen
-    process_dream_scenario(current_scenario['key_words'], current_scenario['place'])
-    
-    # Zwiększamy indeks na następny scenariusz
-    session['current_scenario_index'] = current_index + 1
-    
-    return jsonify({
-        "status": "success",
-        "scenario_index": current_index,
-        "scenario": current_scenario,
-        "total_scenarios": len(scenarios),
-        "timestamp": datetime.now().isoformat()
-    })
 
 
 

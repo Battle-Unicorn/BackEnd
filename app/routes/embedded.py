@@ -77,12 +77,17 @@ def embedded_data():
         # Sprawdzamy czy to nowa faza REM (przejście z False na True)
         previous_rem_flag = session.get('rem_flag', False)
         
-        # Jeśli poprzednio nie było REM a teraz jest - zwiększamy licznik
+        # Logika numeru bieżącej fazy REM
         if not previous_rem_flag and rem_detected:
-            rem_phase_count = session.get('rem_phase_count', 0)
-            rem_phase_count += 1
-            session['rem_phase_count'] = rem_phase_count
-            print(f"NOWA FAZA REM WYKRYTA! Liczba faz REM: {rem_phase_count}")
+            # Początek nowej fazy REM - zwiększamy numer fazy
+            current_rem_phase = session.get('current_rem_phase', 0) + 1
+            session['current_rem_phase'] = current_rem_phase
+            print(f"NOWA FAZA REM WYKRYTA! Numer bieżącej fazy: {current_rem_phase}")
+        elif previous_rem_flag and not rem_detected:
+            # Koniec fazy REM - resetujemy na 0 (nie w REM)
+            session['current_rem_phase'] = 0
+            print("KONIEC FAZY REM - powrót do normalnego snu")
+        # Jeśli stan się nie zmienił, pozostawiamy obecny numer fazy
         
         session['rem_flag'] = rem_detected
         session['sleep_flag'] = sleep_flag  
@@ -90,9 +95,9 @@ def embedded_data():
         session['last_update'] = datetime.now().isoformat()
         session['device_id'] = data.get('device_id')
         
-        # Inicjalizujemy licznik jeśli nie istnieje
-        if 'rem_phase_count' not in session:
-            session['rem_phase_count'] = 0
+        # Inicjalizujemy numer fazy jeśli nie istnieje
+        if 'current_rem_phase' not in session:
+            session['current_rem_phase'] = 0
         
         # 5. POBIERAMY STATYSTYKI DO LOGOWANIA
         hr_stats = get_hr_stats()
@@ -106,7 +111,7 @@ def embedded_data():
             "device_id": data.get('device_id'),
             "timestamp": datetime.now().isoformat(),
             "rem_detected": rem_detected,
-            "rem_phase_count": session.get('rem_phase_count', 0),
+            "current_rem_phase": session.get('current_rem_phase', 0),
             "samples_processed": len(plethysmometer_data),
             "total_hr_history": hr_stats.get('total_samples', 0),
             "flags": {
@@ -134,7 +139,7 @@ def get_rem_status():
     atonia_flag = session.get('atonia_flag', False)
     last_update = session.get('last_update')
     device_id = session.get('device_id')
-    rem_phase_count = session.get('rem_phase_count', 0)
+    current_rem_phase = session.get('current_rem_phase', 0)
     
     # Pobieramy statystyki HR
     hr_stats = get_hr_stats()
@@ -143,7 +148,7 @@ def get_rem_status():
         "rem_detected": rem_flag,
         "sleep_detected": sleep_flag,
         "atonia_detected": atonia_flag,
-        "rem_phase_count": rem_phase_count,
+        "current_rem_phase": current_rem_phase,
         "last_update": last_update,
         "device_id": device_id,
         "hr_stats": hr_stats
@@ -152,14 +157,14 @@ def get_rem_status():
 @embedded_bp.route('/embedded/reset_rem_counter', methods=['POST'])
 def reset_rem_counter():
     """
-    Endpoint do resetowania licznika faz REM (na początku nowej sesji snu)
+    Endpoint do resetowania numeru fazy REM (na początku nowej sesji snu)
     """
-    session['rem_phase_count'] = 0
+    session['current_rem_phase'] = 0
     session['rem_flag'] = False
-    print("Zresetowano licznik faz REM")
+    print("Zresetowano numer fazy REM")
     
     return jsonify({
         "status": "success",
-        "message": "Licznik faz REM został zresetowany",
-        "rem_phase_count": 0
+        "message": "Numer fazy REM został zresetowany",
+        "current_rem_phase": 0
     })
