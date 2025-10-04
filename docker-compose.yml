@@ -9,6 +9,12 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - PYTHONUNBUFFERED=1
+      # Database connection info (point to the `db` service)
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=admin1
+      - DB_NAME=hackyeah
     depends_on:
       - db
 

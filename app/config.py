@@ -1,9 +1,18 @@
 import os
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
+    # Read from common env vars, fall back to Docker Compose POSTGRES_* values, then sensible defaults.
+    DB_USER = os.getenv('DB_USER') or os.getenv('POSTGRES_USER') or 'admin'
+    DB_PASSWORD = os.getenv('DB_PASSWORD') or os.getenv('POSTGRES_PASSWORD') or 'admin1'
+    DB_HOST = os.getenv('DB_HOST') or 'db'
+    DB_PORT = os.getenv('DB_PORT') or os.getenv('POSTGRES_PORT') or '5432'
+    DB_NAME = os.getenv('DB_NAME') or os.getenv('POSTGRES_DB') or 'hackyeah'
+
+    SQLALCHEMY_DATABASE_URI = (
+        f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = os.getenv('FLASK_SECRET_KEY')
-    
+    SECRET_KEY = os.getenv('FLASK_SECRET_KEY') or os.getenv('SECRET_KEY') or 'dev-secret'
+
     # Set to True to use local vendor files, False to use CDN
     USE_LOCAL_FILES = True

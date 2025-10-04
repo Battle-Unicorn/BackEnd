@@ -11,13 +11,18 @@ def get_test():
             *
         FROM
             TEST
-        """)
+        """
+    )
     try:
         result = db.session.execute(query).first()
-        return [dict(row._mapping) for row in result]
+        if result:
+            return str(dict(result._mapping))
+        else:
+            return "Brak wyników w bazie danych."
     except Exception as e:
         print(f"Error fetching data from db: {str(e)}")
-        return {}
+        return f"Błąd podczas pobierania danych: {str(e)}"
+
 
 
 def get_computer(pcid: int) -> dict:
