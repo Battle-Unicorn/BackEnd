@@ -1,7 +1,8 @@
-version: '3.8'
 services:
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.web
     ports:
       - "8080:8080"
     environment:
@@ -10,10 +11,12 @@ services:
       - PYTHONUNBUFFERED=1
     depends_on:
       - db
+
     volumes:
-      - ./app:/app
+      - ./:/app
+
   db:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile.db
     restart: always
@@ -27,8 +30,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  volumes:
-    postgres_data:
   adminer:
     image: adminer
     restart: always
@@ -36,3 +37,6 @@ services:
       - "5050:8080"
     depends_on:
       - db
+
+volumes:
+  postgres_data:
