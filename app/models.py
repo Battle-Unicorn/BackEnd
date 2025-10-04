@@ -39,34 +39,3 @@ def add_record_to_test(content_value):
         db.session.rollback()
         print(f"Error inserting data into db: {str(e)}")
         return f"Błąd podczas dodawania danych: {str(e)}"
-
-
-
-
-def get_computer(pcid: int) -> dict:
-    """
-    Pobiera informację nt komputera.
-    Args:
-        pcid (int): ID komputera
-    Returns:
-        dict: Słownik zawierający informacje o komputerze lub pusty słownik jeśli nie znaleziono
-    """
-    query = text(
-        """
-        SELECT 
-            k.*,
-            p.imie AS wlasciciel_imie,
-            p.nazwisko AS wlasciciel_nazwisko
-        FROM
-            komputery k
-        LEFT JOIN
-            pracownicy p ON k.wlasciciel = p.pid
-        WHERE
-            k.pcid = :pcid
-        """)
-    try:
-        result = db.session.execute(query, {'pcid': pcid}).first()
-        return dict(result._mapping) if result else {}
-    except Exception as e:
-        print(f"Error fetching computer details: {str(e)}")
-        return {}
