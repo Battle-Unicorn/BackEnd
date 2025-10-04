@@ -5,16 +5,13 @@ services:
       dockerfile: Dockerfile.web
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - PYTHONUNBUFFERED=1
-      # Database connection info (point to the `db` service)
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=admin
-      - DB_PASSWORD=admin1
-      - DB_NAME=hackyeah
+      # Database connection info are read from .env (see .env.example)
     depends_on:
       - db
 
@@ -26,10 +23,12 @@ services:
       context: .
       dockerfile: Dockerfile.db
     restart: always
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: hackyeah
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin1
+      POSTGRES_DB: ${POSTGRES_DB:-hackyeah}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin1}
       LANG: pl_PL.UTF-8
       LC_ALL: pl_PL.UTF-8
       POSTGRES_INITDB_ARGS: "--locale=pl_PL.UTF-8 --encoding=UTF8"
