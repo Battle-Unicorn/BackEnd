@@ -1,58 +1,49 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
-from typing import Optional
-from datetime import datetime
 
 db = SQLAlchemy()
 
 
-# Funkcje pomocnicze i wyszukiwania
-def convert_to_date(date_string: str) -> str:
-    """
-    Waliduje wartość tak aby była zgodna z typem date z baz danych Postgres (YYYY-MM-DD).
-    """
+def get_test():
+    query = text(
+        """
+        SELECT
+            *
+        FROM
+            TEST
+        """)
     try:
-        parsed_date = datetime.strptime(date_string, "%Y-%m-%d")
-        return parsed_date.date().isoformat()
-    except ValueError:
-        raise ValueError("Nieprawidłowy format daty. Użyj formatu: YYYY-MM-DD")
+        result = db.session.execute(query).first()
+        return [dict(row._mapping) for row in result]
+    except Exception as e:
+        print(f"Error fetching data from db: {str(e)}")
+        return {}
 
 
-def validate_dates(*dates: Optional[str]) -> tuple[Optional[str], ...]:
+def get_computer(pcid: int) -> dict:
     """
-    Waliduje i konwertuje daty do formatu bazy danych.
-    
+    Pobiera informację nt komputera.
     Args:
-        *dates: Zmienne argumenty dat w formacie YYYY-MM-DD
-        
+        pcid (int): ID komputera
     Returns:
-        tuple: Krotka zawierająca skonwertowane daty lub None dla niepodanych dat
-        
-    Raises:
-        ValueError: Jeśli format którejś z dat jest nieprawidłowy
+        dict: Słownik zawierający informacje o komputerze lub pusty słownik jeśli nie znaleziono
     """
-    validated_dates = []
-    
-    for date in dates:
-        if not date:
-            validated_dates.append(None)
-            continue
-            
-        try:
-            validated_dates.append(convert_to_date(date))
-        except ValueError as e:
-            raise ValueError(f"Nieprawidłowy format daty: {str(e)}")
-
-    return tuple(validated_dates)
-
-
-def search_employees(query: str = None, limit: int = None):
-    sql = text(f"""
-        SELECT *
-        FROM users
-        WHERE id = (:query)
-        {f'LIMIT {limit}' if limit else ''}
-    """)
-    result = db.session.execute(sql, {'query': f'%{query}%'})
-
-
+    query = text(
+        """
+        SELECT 
+            k.*,
+            p.imie AS wlasciciel_imie,
+            p.nazwisko AS wlasciciel_nazwisko
+        FROM
+            komputery k
+        LEFT JOIN
+            pracownicy p ON k.wlasciciel = p.pid
+        WHERE
+            k.pcid = :pcid
+        """)
+    try:
+        result = db.session.execute(query, {'pcid': pcid}).first()
+        return dict(result._mapping) if result else {}
+    except Exception as e:
+        print(f"Error fetching computer details: {str(e)}")
+        return {}
