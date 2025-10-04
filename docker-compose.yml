@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile.web
     ports:
       - "8080:8080"
+    restart: on-failure:10
     env_file:
       - .env
     environment:
