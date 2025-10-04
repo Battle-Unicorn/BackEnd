@@ -1,7 +1,9 @@
-from flask import Blueprint, jsonify, session
-from app.models import get_test
+from flask import Blueprint, jsonify, session, request
 from ..rem_detection import get_hr_stats
+from ..sound_gen import process_dream_scenario
 from datetime import datetime
+import json
+import os
 
 mobile_bp = Blueprint('mobile', __name__)
 
@@ -46,3 +48,99 @@ def mobile_polling():
     }
     
     return jsonify(response_data)
+
+@mobile_bp.route('/mobile/load_scenarios', methods=['POST'])
+def load_dream_scenarios():
+    """
+    Endpoint do ładowania scenariuszy snów z request body do sesji
+    Oczekuje JSON w formacie:
+    {
+        "mobile_id": "MOB_001",
+        "dream_keywords": [
+            {"key_words": "flying airplane clouds sky", "place": "high above mountains"},
+            ...
+        ]
+    }
+    """
+    try:
+        # Pobieramy dane JSON z request body
+        scenarios_data = request.get_json()
+        
+        if not scenarios_data:
+            return jsonify({
+                "status": "error",
+                "message": "No JSON data provided in request body"
+            }), 400
+            
+        if 'dream_keywords' not in scenarios_data:
+            return jsonify({
+                "status": "error",
+                "message": "Missing 'dream_keywords' field in request data"
+            }), 400
+            
+        if not isinstance(scenarios_data['dream_keywords'], list):
+            return jsonify({
+                "status": "error",
+                "message": "'dream_keywords' must be an array"
+            }), 400
+            
+        # Zapisujemy scenariusze w sesji
+        session['dream_scenarios'] = scenarios_data['dream_keywords']
+        session['current_scenario_index'] = 0
+        session['mobile_id'] = scenarios_data.get('mobile_id', 'unknown')
+        
+        return jsonify({
+            "status": "success",
+            "message": "Dream scenarios loaded successfully",
+            "scenarios_count": len(scenarios_data['dream_keywords']),
+            "mobile_id": scenarios_data.get('mobile_id')
+        })
+        
+    except json.JSONDecodeError:
+        return jsonify({
+            "status": "error", 
+            "message": "Invalid JSON format in request body"
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error loading scenarios: {str(e)}"
+        }), 500
+
+@mobile_bp.route('/mobile/next_scenario')
+def get_next_scenario():
+    """
+    Endpoint do pobierania kolejnego scenariusza snu z sesji
+    """
+    scenarios = session.get('dream_scenarios', [])
+    current_index = session.get('current_scenario_index', 0)
+    
+    if not scenarios:
+        return jsonify({
+            "status": "error",
+            "message": "No scenarios loaded. Please load scenarios first."
+        }), 400
+    
+    if current_index >= len(scenarios):
+        # Resetujemy indeks na początek jeśli doszliśmy do końca
+        current_index = 0
+        session['current_scenario_index'] = current_index
+    
+    current_scenario = scenarios[current_index]
+    
+    # Przetwarzamy scenariusz przez funkcję z sound_gen
+    process_dream_scenario(current_scenario['key_words'], current_scenario['place'])
+    
+    # Zwiększamy indeks na następny scenariusz
+    session['current_scenario_index'] = current_index + 1
+    
+    return jsonify({
+        "status": "success",
+        "scenario_index": current_index,
+        "scenario": current_scenario,
+        "total_scenarios": len(scenarios),
+        "timestamp": datetime.now().isoformat()
+    })
+
+
+
