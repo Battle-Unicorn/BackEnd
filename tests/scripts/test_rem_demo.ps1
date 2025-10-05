@@ -5,17 +5,17 @@ $baseUrl = "http://localhost:8080"
 
 # 1. Wyślij normalne dane HR (64 BPM average)
 Write-Host "`n1. Sending normal HR data (baseline)..." -ForegroundColor Yellow
-$normalData = Get-Content "../mock_data/data_sensor_data.json" -Raw
-$result1 = Invoke-RestMethod -Uri "$baseUrl/embedded/sensor_data" -Method POST -Body $normalData -ContentType "application/json"
-Write-Host "Normal HR data sent. Total HR samples: $($result1.total_samples_stored.hr)" -ForegroundColor Cyan
+$normalData = Get-Content "../mock_data/data_plethysmometer.json" -Raw
+$result1 = Invoke-RestMethod -Uri "$baseUrl/embedded/plethysmometer" -Method POST -Body $normalData -ContentType "application/json"
+Write-Host "Normal HR data sent. Total HR samples: $($result1.total_hr_samples_stored)" -ForegroundColor Cyan
 
 Start-Sleep -Seconds 2
 
 # 2. Wyślij dane z wysokim HR (80+ BPM average)  
 Write-Host "`n2. Sending HIGH HR data (REM simulation)..." -ForegroundColor Yellow
-$highHrData = Get-Content "../mock_data/data_sensor_high_hr.json" -Raw
-$result2 = Invoke-RestMethod -Uri "$baseUrl/embedded/sensor_data" -Method POST -Body $highHrData -ContentType "application/json"
-Write-Host "High HR data sent. Total HR samples: $($result2.total_samples_stored.hr)" -ForegroundColor Cyan
+$highHrData = Get-Content "../mock_data/data_plethysmometer_high_hr.json" -Raw
+$result2 = Invoke-RestMethod -Uri "$baseUrl/embedded/plethysmometer" -Method POST -Body $highHrData -ContentType "application/json"
+Write-Host "High HR data sent. Total HR samples: $($result2.total_hr_samples_stored)" -ForegroundColor Cyan
 
 Start-Sleep -Seconds 2
 

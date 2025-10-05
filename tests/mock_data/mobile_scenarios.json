@@ -3,32 +3,32 @@
   "timestamp": "2025-10-04T21:20:00Z",
   "dream_keywords": [
     {
-      "key_words": "flying airplane clouds sky",
-      "place": "high above mountains"
+      "key_words": "latający samolot chmury niebo",
+      "place": "wysoko nad górami"
     },
     {
-      "key_words": "ocean waves swimming dolphins",
-      "place": "deep blue sea"
+      "key_words": "ocean fale pływanie delfiny",
+      "place": "głębokie błękitne morze"
     },
     {
-      "key_words": "forest trees animals birds",
-      "place": "enchanted woodland"
+      "key_words": "las drzewa zwierzęta ptaki",
+      "place": "zaczarowany las"
     },
     {
-      "key_words": "city lights buildings traffic",
-      "place": "downtown metropolis"
+      "key_words": "światła miasta budynki ruch uliczny",
+      "place": "centrum metropolii"
     },
     {
-      "key_words": "home family kitchen dinner",
-      "place": "childhood house"
+      "key_words": "dom rodzina kuchnia obiad",
+      "place": "dom z dzieciństwa"
     },
     {
-      "key_words": "school classroom teacher students",
-      "place": "old university building"
+      "key_words": "szkoła klasa nauczyciel uczniowie",
+      "place": "stary budynek uniwersytetu"
     },
     {
-      "key_words": "space stars planets rocket",
-      "place": "distant galaxy"
+      "key_words": "kosmos gwiazdy planety rakieta",
+      "place": "odległa galaktyka"
     }
   ]
 }

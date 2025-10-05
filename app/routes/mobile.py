@@ -1,6 +1,6 @@
-from flask import Blueprint, jsonify, session, request, send_file, abort
+from flask import Blueprint, jsonify, session, request, send_file
 from ..rem_detection import get_hr_stats
-from ..sound_gen import generate_sound, process_dream_scenario
+from ..sound_gen import generate_sound
 from datetime import datetime
 import json
 import os
@@ -9,6 +9,15 @@ import os
 from .embedded import shared_storage
 
 mobile_bp = Blueprint('mobile', __name__)
+
+#put this sippet ahead of all your bluprints# blueprint can also be app~~
+#@mobile_bp.after_request 
+# def after_request(response):    
+#     header = response.headers  
+#     header.add("Access-Control-Allow-Origin", "*")    
+#     header.add('Access-Control-Allow-Headers', "*")    
+#     header.add('Access-Control-Allow-Methods', "*")
+#     return response
 
 def get_mobile_session(mobile_id):
     """Pobiera mobile session storage, tworzy jeśli nie istnieje"""

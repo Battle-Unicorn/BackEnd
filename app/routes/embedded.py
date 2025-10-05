@@ -285,75 +285,172 @@ def embedded_flags():
         return jsonify({"error": "Blad przetwarzania flag", "details": str(e)}), 500
 
 
-@embedded_bp.route('/embedded/data', methods=['POST'])
-def embedded_data_legacy():
+@embedded_bp.route('/embedded/plethysmometer', methods=['POST'])
+def embedded_plethysmometer():
     """
-    LEGACY ENDPOINT - dla kompatybilności wstecznej.
-    Przekierowuje do nowych endpointów /embedded/sensor_data i /embedded/flags
+    Endpoint otrzymujący dane z pulsoksymetru (heart rate, spo2).
     """
-    # Ten endpoint może być używany przez stare urządzenia
-    # Dzieli dane i wywołuje odpowiednie nowe endpointy
-    return jsonify({
-        "status": "deprecated",
-        "message": "This endpoint is deprecated. Use /embedded/sensor_data and /embedded/flags instead",
-        "new_endpoints": {
-            "sensor_data": "/embedded/sensor_data",
-            "flags": "/embedded/flags"
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "Brak danych JSON"}), 400
+    
+    try:
+        device_id = data.get('device_id')
+        print(f"\nOtrzymano dane plethysmometer z urządzenia {device_id} o {datetime.now().strftime('%H:%M:%S')}")
+        
+        # Pobieramy storage dla tego urządzenia
+        device_storage = get_device_storage(device_id)
+        
+        # Pobieramy dane z pulsoksymetru
+        plethysmometer_data = data.get('plethysmometer', [])
+        print(f"Otrzymano {len(plethysmometer_data)} próbek HR/SpO2")
+        
+        if plethysmometer_data and isinstance(plethysmometer_data, list):
+            try:
+                hr_values = [entry['heart_rate'] for entry in plethysmometer_data]
+                spo2_values = [entry['spo2'] for entry in plethysmometer_data]
+                print(f"HR w tym pakiecie: min={min(hr_values)}, max={max(hr_values)}, avg={sum(hr_values)/len(hr_values):.1f}")
+                print(f"SpO2 w tym pakiecie: min={min(spo2_values):.1f}%, max={max(spo2_values):.1f}%, avg={sum(spo2_values)/len(spo2_values):.1f}%")
+                
+                # Zapisujemy dane HR do device storage
+                device_storage['hr_history'].extend(plethysmometer_data)
+                print(f"DEBUG: Zapisano {len(plethysmometer_data)} próbek HR do storage")
+                print(f"DEBUG: Łączna liczba próbek HR w storage: {len(device_storage['hr_history'])}")
+                
+            except Exception as hr_error:
+                print(f"ERROR przy pobieraniu danych plethysmometer: {str(hr_error)}")
+        
+        # Aktualizujemy metadane storage
+        device_storage['last_update'] = datetime.now().isoformat()
+        session['last_sensor_update'] = datetime.now().isoformat()
+        session['device_id'] = device_id
+        
+        # Odpowiadamy urządzeniu
+        response_data = {
+            "status": "success",
+            "message": "Plethysmometer data received and stored",
+            "device_id": device_id,
+            "timestamp": datetime.now().isoformat(),
+            "samples_received": len(plethysmometer_data),
+            "total_hr_samples_stored": len(device_storage['hr_history'])
         }
-    })
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        import traceback
+        print(f"ERROR przetwarzania danych plethysmometer: {str(e)}")
+        print(f"DEBUG traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Błąd przetwarzania danych plethysmometer", "details": str(e)}), 500
 
-@embedded_bp.route('/embedded/rem_status', methods=['GET'])
-def get_rem_status():
+
+@embedded_bp.route('/embedded/mpu', methods=['POST'])
+def embedded_mpu():
     """
-    Endpoint dla aplikacji mobilnej - zwraca aktualny stan REM z shared storage
+    Endpoint otrzymujący dane z czujnika ruchu MPU (akcelerometr/żyroskop).
     """
-    # Pobieramy stan z shared storage
-    rem_state = shared_storage['current_rem_state']
+    data = request.get_json()
     
-    # Pobieramy statystyki HR
-    hr_stats = get_hr_stats()
+    if not data:
+        return jsonify({"error": "Brak danych JSON"}), 400
     
-    return jsonify({
-        "rem_detected": rem_state['rem_detected'],
-        "sleep_detected": rem_state['sleep_flag'],
-        "atonia_detected": rem_state['atonia_flag'],
-        "current_rem_phase": rem_state['current_rem_phase'],
-        "last_update": rem_state['last_update'],
-        "device_id": rem_state['last_device_id'],
-        "hr_stats": hr_stats,
-        "global_stats": {
-            "total_rem_phases": shared_storage['global_stats']['total_rem_phases'],
-            "active_devices": len(shared_storage['global_stats']['active_devices']),
-            "active_mobile_sessions": len(shared_storage['global_stats']['active_mobile_sessions'])
+    try:
+        device_id = data.get('device_id')
+        print(f"\nOtrzymano dane MPU z urządzenia {device_id} o {datetime.now().strftime('%H:%M:%S')}")
+        
+        # Pobieramy storage dla tego urządzenia
+        device_storage = get_device_storage(device_id)
+        
+        # Pobieramy dane z MPU
+        mpu_data = data.get('mpu', {})
+        mpu_samples = mpu_data.get('samples', [])
+        print(f"Otrzymano {len(mpu_samples)} próbek MPU")
+        
+        if mpu_samples:
+            # Zapisujemy dane MPU do storage
+            device_storage['mpu_history'].extend(mpu_samples)
+            print(f"DEBUG: Zapisano {len(mpu_samples)} próbek MPU do storage")
+            print(f"DEBUG: Łączna liczba próbek MPU w storage: {len(device_storage['mpu_history'])}")
+        
+        # Aktualizujemy metadane storage
+        device_storage['last_update'] = datetime.now().isoformat()
+        session['last_sensor_update'] = datetime.now().isoformat()
+        session['device_id'] = device_id
+        
+        # Odpowiadamy urządzeniu
+        response_data = {
+            "status": "success",
+            "message": "MPU data received and stored",
+            "device_id": device_id,
+            "timestamp": datetime.now().isoformat(),
+            "samples_received": len(mpu_samples),
+            "total_mpu_samples_stored": len(device_storage['mpu_history'])
         }
-    })
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        import traceback
+        print(f"ERROR przetwarzania danych MPU: {str(e)}")
+        print(f"DEBUG traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Błąd przetwarzania danych MPU", "details": str(e)}), 500
 
-@embedded_bp.route('/embedded/reset_rem_counter', methods=['POST'])
-def reset_rem_counter():
+
+@embedded_bp.route('/embedded/emg', methods=['POST'])
+def embedded_emg():
     """
-    Endpoint do resetowania numeru fazy REM (na początku nowej sesji snu)
+    Endpoint otrzymujący dane z czujnika EMG (napięcie mięśni).
     """
-    # Resetujemy shared storage
-    shared_storage['current_rem_state'].update({
-        'rem_detected': False,
-        'current_rem_phase': 0,
-        'sleep_flag': False,
-        'atonia_flag': False,
-        'last_device_id': None,
-        'last_update': datetime.now().isoformat()
-    })
-    shared_storage['global_stats']['total_rem_phases'] = 0
+    data = request.get_json()
     
-    # Zachowujemy kompatybilność z sesją
-    session['current_rem_phase'] = 0
-    session['rem_flag'] = False
-    print("Zresetowano numer fazy REM w shared storage")
+    if not data:
+        return jsonify({"error": "Brak danych JSON"}), 400
     
-    return jsonify({
-        "status": "success",
-        "message": "Numer fazy REM został zresetowany w shared storage",
-        "current_rem_phase": 0
-    })
+    try:
+        device_id = data.get('device_id')
+        print(f"\nOtrzymano dane EMG z urządzenia {device_id} o {datetime.now().strftime('%H:%M:%S')}")
+        
+        # Pobieramy storage dla tego urządzenia
+        device_storage = get_device_storage(device_id)
+        
+        # Pobieramy dane z EMG
+        emg_data = data.get('emg', {})
+        emg_samples = emg_data.get('samples', [])
+        print(f"Otrzymano {len(emg_samples)} próbek EMG")
+        
+        if emg_samples:
+            # Zapisujemy dane EMG do storage
+            device_storage['emg_history'].extend(emg_samples)
+            print(f"DEBUG: Zapisano {len(emg_samples)} próbek EMG do storage")
+            print(f"DEBUG: Łączna liczba próbek EMG w storage: {len(device_storage['emg_history'])}")
+            
+            # Wyświetlamy statystyki muscle_tone
+            muscle_tones = [sample['envelope'] for sample in emg_samples]
+            print(f"Muscle tone w tym pakiecie: min={min(muscle_tones):.1f}, max={max(muscle_tones):.1f}, avg={sum(muscle_tones)/len(muscle_tones):.1f}")
+        
+        # Aktualizujemy metadane storage
+        device_storage['last_update'] = datetime.now().isoformat()
+        session['last_sensor_update'] = datetime.now().isoformat()
+        session['device_id'] = device_id
+        
+        # Odpowiadamy urządzeniu
+        response_data = {
+            "status": "success",
+            "message": "EMG data received and stored",
+            "device_id": device_id,
+            "timestamp": datetime.now().isoformat(),
+            "samples_received": len(emg_samples),
+            "total_emg_samples_stored": len(device_storage['emg_history'])
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        import traceback
+        print(f"ERROR przetwarzania danych EMG: {str(e)}")
+        print(f"DEBUG traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Błąd przetwarzania danych EMG", "details": str(e)}), 500
 
 def try_generate_sound_for_rem_phase(rem_phase_number):
     """

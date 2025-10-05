@@ -58,11 +58,18 @@ def log_audio_generation_to_storage(scenario_result, audio_files):
 
 # Try to import pydub, but handle the Python 3.13 audioop issue
 try:
+    # Próbujemy zaimportować pydub
     from pydub import AudioSegment
+    from pydub.utils import which
+    # Sprawdź czy ffmpeg jest dostępny
+    if which("ffmpeg") is None:
+        print("Warning: ffmpeg not found - some pydub operations may fail")
     PYDUB_AVAILABLE = True
     print("pydub imported successfully")
-except (ImportError, ModuleNotFoundError) as e:
+except Exception as e:
     print(f"pydub not available: {e}")
+    print("This is expected with Python 3.13 due to missing audioop module")
+    print("Audio processing will use simple fallbacks")
     PYDUB_AVAILABLE = False
     AudioSegment = None
 
@@ -182,9 +189,10 @@ def generate_sound(key_words, place):
         client = ElevenLabs(api_key=elevenlabs_api_key)
 
         # Generowanie TTS - użyjmy prawidłowego API
+        print(f"Generating TTS for: {scenario_result['tts_text'][:100]}...")
         tts_audio = client.text_to_speech.convert(
             text=scenario_result["tts_text"],
-            voice_id="EXAVITQu4vr4xnSDxMaL",
+            voice_id="EXAVITQu4vr4xnSDxMaL",  # Bella - wielojęzyczny głos
             model_id="eleven_multilingual_v2"
         )
 
@@ -265,28 +273,41 @@ def generate_sound(key_words, place):
 def create_simple_extended_audio(tts_audio_bytes, sound_effect_bytes):
     """
     Prosty fallback - tworzy 15-minutowe audio bez zaawansowanego miksowania
-    Gdy pydub nie jest dostępny, po prostu sklejamy pliki MP3
+    Gdy pydub nie jest dostępny, zapisuje pliki osobno i zwraca background
     
     Args:
         tts_audio_bytes: Bajty TTS audio
         sound_effect_bytes: Bajty sound effect (30s)
         
     Returns:
-        bytes: Sklejone audio (TTS + powtórzone background)
+        bytes: Rozszerzone background audio (bez prawidłowego miksowania)
     """
     print("Creating simple extended audio fallback...")
+    print("WARNING: Without pydub, audio mixing is not available!")
+    print("This will create a looped background - TTS will be in separate file")
     
-    # Powtarzamy 30s pętlę 30 razy = 15 minut
-    repetitions = 30
-    extended_background = sound_effect_bytes * repetitions
+    # Bez pydub nie możemy prawidłowo miksować - zwracamy tylko rozszerzony background
+    # TTS będzie w osobnym pliku
     
-    # Prosty sposób: sklejamy TTS na początku z rozszerzonym backgroundem
-    # To nie jest idealne miksowanie, ale przynajmniej zawiera oba dźwięki
-    combined_audio = tts_audio_bytes + extended_background
+    # Szacujemy ile powtórzeń potrzebujemy dla 15 minut
+    # Zakładamy że 30s sound effect to około 480KB (16kbps * 30s)
+    estimated_30s_duration = 30
+    target_duration = 15 * 60  # 15 minut w sekundach
+    repetitions = target_duration // estimated_30s_duration
     
-    print(f"Simple fallback created: TTS ({len(tts_audio_bytes)} bytes) + Extended background ({len(extended_background)} bytes)")
+    print(f"Repeating 30s loop {repetitions} times for ~{repetitions * 30/60:.1f} minutes")
     
-    return combined_audio
+    # Tworzymy rozszerzony background przez powtórzenie
+    extended_background = sound_effect_bytes
+    for i in range(repetitions - 1):  # -1 bo już mamy jeden
+        extended_background += sound_effect_bytes
+        if i % 10 == 0:
+            print(f"Added repetition {i+2}/{repetitions}")
+    
+    print(f"Simple fallback created: Extended background ({len(extended_background)} bytes)")
+    print("Note: TTS audio will be saved as separate file due to mixing limitations")
+    
+    return extended_background
 
 
 def create_extended_audio(tts_audio_bytes, sound_effect_bytes):
@@ -310,8 +331,14 @@ def create_extended_audio(tts_audio_bytes, sound_effect_bytes):
         
         # Konwersja bajtów do AudioSegment
         print("Converting audio bytes to AudioSegment...")
-        tts_segment = AudioSegment.from_mp3(io.BytesIO(tts_audio_bytes))
-        sound_loop = AudioSegment.from_mp3(io.BytesIO(sound_effect_bytes))
+        try:
+            tts_segment = AudioSegment.from_mp3(io.BytesIO(tts_audio_bytes))
+            sound_loop = AudioSegment.from_mp3(io.BytesIO(sound_effect_bytes))
+            print(f"Successfully loaded: TTS ({len(tts_segment)}ms), Loop ({len(sound_loop)}ms)")
+        except Exception as conversion_error:
+            print(f"Error converting audio to AudioSegment: {conversion_error}")
+            print("Falling back to simple audio extension...")
+            return create_simple_extended_audio(tts_audio_bytes, sound_effect_bytes)
         
         # Sprawdzenie długości pętli
         loop_duration_ms = len(sound_loop)
@@ -353,13 +380,20 @@ def create_extended_audio(tts_audio_bytes, sound_effect_bytes):
         print("Mixing TTS after fade-in...")
         tts_start_ms = fade_in_duration_ms  # Start od 10s
         
+        # Normalizacja głośności TTS i background przed miksowaniem
+        print("Normalizing audio levels...")
+        # Zmniejszamy głośność background żeby TTS było wyraźnie słyszalne
+        extended_background = extended_background - 15  # -15dB dla background
+        
         # Jeśli TTS jest dłuższe niż pozostały czas, skracamy go
         available_time_ms = len(extended_background) - tts_start_ms
         if len(tts_segment) > available_time_ms:
             print(f"TTS too long ({len(tts_segment)}ms), trimming to {available_time_ms}ms")
             tts_segment = tts_segment[:available_time_ms]
             
-        # Miksowanie bez clippingu - overlay z automatyczną kompensacją głośności
+
+        # Miksowanie bez clippingu - overlay z odpowiednimi poziomami
+        print(f"Overlaying TTS at position {tts_start_ms}ms")
         final_audio = extended_background.overlay(tts_segment, position=tts_start_ms)
         
         print(f"Final audio duration: {len(final_audio)}ms (~{len(final_audio)/60000:.1f} minutes)")
@@ -376,11 +410,59 @@ def create_extended_audio(tts_audio_bytes, sound_effect_bytes):
         
     except Exception as e:
         print(f"Błąd w create_extended_audio: {str(e)}")
-        print("Falling back to simple repetition...")
-        # Fallback - proste powtórzenie 30 razy
-        repetitions = 30
-        return sound_effect_bytes * repetitions
+        print("Falling back to simple audio extension...")
+        # Fallback - używamy funkcji simple fallback
+        return create_simple_extended_audio(tts_audio_bytes, sound_effect_bytes)
 
+def test_audio_generation():
+    """
+    Funkcja testowa do debugowania problemów z generowaniem audio
+    """
+    print("=== TESTING AUDIO GENERATION ===")
+    
+    # Test 1: Sprawdź pydub
+    print(f"1. pydub available: {PYDUB_AVAILABLE}")
+    if PYDUB_AVAILABLE:
+        try:
+            from pydub.utils import which
+            ffmpeg_path = which("ffmpeg")
+            print(f"   ffmpeg path: {ffmpeg_path}")
+        except Exception as e:
+            print(f"   ffmpeg check error: {e}")
+    
+    # Test 2: Sprawdź klucze API
+    print("2. API keys:")
+    deepseek_key = os.getenv('DEEPSEEK_API_KEY')
+    elevenlabs_key = os.getenv('ELEVENLABS_API_KEY')
+    print(f"   DEEPSEEK_API_KEY: {'✓' if deepseek_key else '✗'}")
+    print(f"   ELEVENLABS_API_KEY: {'✓' if elevenlabs_key else '✗'}")
+    
+    # Test 3: Sprawdź katalog audio
+    audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'audio_files')
+    print(f"3. Audio directory: {audio_dir}")
+    print(f"   Exists: {os.path.exists(audio_dir)}")
+    if os.path.exists(audio_dir):
+        print(f"   Writable: {os.access(audio_dir, os.W_OK)}")
+        files = [f for f in os.listdir(audio_dir) if f.endswith('.mp3')]
+        print(f"   MP3 files: {len(files)}")
+    
+    # Test 4: Test prostego generowania
+    if deepseek_key and elevenlabs_key:
+        print("4. Testing simple generation...")
+        try:
+            result = generate_sound("test ocean waves", "peaceful beach")
+            print(f"   Generation result: {result.get('status', 'unknown')}")
+            if result.get('audio_files'):
+                for file_type, file_path in result['audio_files'].items():
+                    if os.path.exists(file_path):
+                        file_size = os.path.getsize(file_path)
+                        print(f"   {file_type}: {file_size} bytes")
+                    else:
+                        print(f"   {file_type}: FILE NOT FOUND")
+        except Exception as e:
+            print(f"   Generation test failed: {e}")
+    else:
+        print("4. Skipping generation test - missing API keys")
 
 def cleanup_old_audio_files(max_age_hours=24):
     """
@@ -416,3 +498,7 @@ def cleanup_old_audio_files(max_age_hours=24):
 
     except Exception as e:
         print(f"Error during audio cleanup: {e}")
+
+# Dodajmy możliwość uruchomienia testów bezpośrednio
+if __name__ == "__main__":
+    test_audio_generation()

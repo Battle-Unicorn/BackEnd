@@ -3,11 +3,11 @@ Write-Host "REM: Testing REM Detection with flags=true..." -ForegroundColor Gree
 
 $baseUrl = "http://localhost:8080"
 
-# Wysłij najpierw dane sensorowe
-Write-Host "`n1. Sending sensor data first..." -ForegroundColor Yellow
-$sensorData = Get-Content "../mock_data/data_sensor_data.json" -Raw
-$result1 = Invoke-RestMethod -Uri "$baseUrl/embedded/sensor_data" -Method POST -Body $sensorData -ContentType "application/json"
-Write-Host "Sensor data sent: HR=$($result1.samples_received.hr)" -ForegroundColor Cyan
+# Wysłij najpierw dane z pulsoksymetru (HR)
+Write-Host "`n1. Sending plethysmometer data first..." -ForegroundColor Yellow
+$plethysmometerData = Get-Content "../mock_data/data_plethysmometer.json" -Raw
+$result1 = Invoke-RestMethod -Uri "$baseUrl/embedded/plethysmometer" -Method POST -Body $plethysmometerData -ContentType "application/json"
+Write-Host "Plethysmometer data sent: HR samples=$($result1.samples_received)" -ForegroundColor Cyan
 
 # Wyślij flagi z REM=true
 Write-Host "`n2. Sending flags with sleep=true, atonia=true..." -ForegroundColor Yellow

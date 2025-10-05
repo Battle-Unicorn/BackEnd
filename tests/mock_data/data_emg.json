@@ -1,0 +1,38 @@
+{
+  "device_id": "Dev_001",
+  "timestamp": "2025-09-24T23:45:12Z",
+  "emg": {
+    "samples": [
+        {"timestamp": "2025-09-24T23:44:43Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:44:44Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:44:45Z", "muscle_tone": 12.4},
+        {"timestamp": "2025-09-24T23:44:46Z", "muscle_tone": 12.7},
+        {"timestamp": "2025-09-24T23:44:47Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:44:48Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:44:49Z", "muscle_tone": 12.7},
+        {"timestamp": "2025-09-24T23:44:50Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:44:51Z", "muscle_tone": 12.4},
+        {"timestamp": "2025-09-24T23:44:52Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:44:53Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:44:54Z", "muscle_tone": 12.7},
+        {"timestamp": "2025-09-24T23:44:55Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:44:56Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:44:57Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:44:58Z", "muscle_tone": 12.7},
+        {"timestamp": "2025-09-24T23:44:59Z", "muscle_tone": 12.4},
+        {"timestamp": "2025-09-24T23:45:00Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:45:01Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:45:02Z", "muscle_tone": 12.7},
+        {"timestamp": "2025-09-24T23:45:03Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:45:04Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:45:05Z", "muscle_tone": 12.4},
+        {"timestamp": "2025-09-24T23:45:06Z", "muscle_tone": 12.7},
+        {"timestamp": "2025-09-24T23:45:07Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:45:08Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:45:09Z", "muscle_tone": 12.7},
+        {"timestamp": "2025-09-24T23:45:10Z", "muscle_tone": 12.6},
+        {"timestamp": "2025-09-24T23:45:11Z", "muscle_tone": 12.5},
+        {"timestamp": "2025-09-24T23:45:12Z", "muscle_tone": 12.6}
+    ]
+  }
+}
