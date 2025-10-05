@@ -18,6 +18,7 @@ services:
 
     volumes:
       - ./:/app
+      - ./audio_files:/app/audio_files
 
   db:
     build:

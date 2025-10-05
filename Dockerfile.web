@@ -12,5 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Skopiuj resztę plików projektu
 COPY . .
 
+# Utwórz folder audio_files i nadaj uprawnienia do zapisu
+RUN mkdir -p /app/audio_files && chmod 777 /app/audio_files
+
 # Uruchom aplikację
 CMD ["python", "run.py"]
