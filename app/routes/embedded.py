@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from ..rem_detection import rem_detection, get_hr_stats
+from ..sound_gen import generate_sound
 from datetime import datetime
 
 embedded_bp = Blueprint('embedded', __name__)
@@ -83,6 +84,10 @@ def embedded_data():
             current_rem_phase = session.get('current_rem_phase', 0) + 1
             session['current_rem_phase'] = current_rem_phase
             print(f"NOWA FAZA REM WYKRYTA! Numer bieżącej fazy: {current_rem_phase}")
+            
+            # Automatyczne uruchomienie scenariusza dla tej fazy REM
+            try_generate_sound_for_rem_phase(current_rem_phase)
+            
         elif previous_rem_flag and not rem_detected:
             # Koniec fazy REM - resetujemy na 0 (nie w REM)
             session['current_rem_phase'] = 0
@@ -168,3 +173,39 @@ def reset_rem_counter():
         "message": "Numer fazy REM został zresetowany",
         "current_rem_phase": 0
     })
+
+def try_generate_sound_for_rem_phase(rem_phase_number):
+    """
+    Próbuje wygenerować dźwięk dla danej fazy REM na podstawie załadowanych scenariuszy
+    
+    Args:
+        rem_phase_number (int): Numer fazy REM (1, 2, 3, ...)
+    """
+    # Pobieramy scenariusze z sesji
+    dream_scenarios = session.get('dream_scenarios', [])
+    
+    if not dream_scenarios:
+        print(f"Brak scenariuszy dla fazy REM #{rem_phase_number}")
+        return
+    
+    # Obliczamy indeks scenariusza (cyklicznie jeśli mamy więcej faz niż scenariuszy)
+    scenario_index = (rem_phase_number - 1) % len(dream_scenarios)
+    scenario = dream_scenarios[scenario_index]
+    
+    # Sprawdzamy czy scenariusz ma wymagane dane
+    key_words = scenario.get('key_words', '').strip()
+    place = scenario.get('place', '').strip()
+    
+    if not key_words and not place:
+        print(f"Scenariusz #{scenario_index} nie ma żadnych danych (key_words i place są puste)")
+        return
+        
+    print(f"Uruchamianie generate_sound dla fazy REM #{rem_phase_number}")
+    print(f"  Scenariusz #{scenario_index}: key_words='{key_words}', place='{place}'")
+    
+    try:
+        # Wywołujemy funkcję generowania dźwięku
+        generate_sound(key_words, place)
+        print(f"  Sukces: generate_sound wykonane dla fazy REM #{rem_phase_number}")
+    except Exception as e:
+        print(f"  ERROR: Błąd podczas generate_sound: {str(e)}")

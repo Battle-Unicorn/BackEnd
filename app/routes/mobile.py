@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, session, request
 from ..rem_detection import get_hr_stats
+from ..sound_gen import generate_sound
 from datetime import datetime
 import json
 import os
@@ -88,10 +89,29 @@ def load_dream_scenarios():
         session['current_scenario_index'] = 0
         session['mobile_id'] = scenarios_data.get('mobile_id', 'unknown')
         
+        # Wywołujemy generate_sound dla każdego scenariusza który ma dane
+        processed_scenarios = 0
+        for i, scenario in enumerate(scenarios_data['dream_keywords']):
+            key_words = scenario.get('key_words', '').strip()
+            place = scenario.get('place', '').strip()
+            
+            # Sprawdzamy czy scenariusz ma jakiekolwiek dane
+            if key_words or place:
+                try:
+                    print(f"Przetwarzanie scenariusza #{i}: key_words='{key_words}', place='{place}'")
+                    generate_sound(key_words, place)
+                    processed_scenarios += 1
+                    print(f"  Sukces: generate_sound wykonane dla scenariusza #{i}")
+                except Exception as e:
+                    print(f"  ERROR: Błąd podczas generate_sound dla scenariusza #{i}: {str(e)}")
+            else:
+                print(f"Pominięto scenariusz #{i} - brak danych (key_words i place są puste)")
+        
         return jsonify({
             "status": "success",
             "message": "Dream scenarios loaded successfully",
             "scenarios_count": len(scenarios_data['dream_keywords']),
+            "processed_scenarios": processed_scenarios,
             "mobile_id": scenarios_data.get('mobile_id')
         })
         
