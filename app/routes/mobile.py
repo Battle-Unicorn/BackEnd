@@ -15,37 +15,45 @@ def mobile_hello():
 @mobile_bp.route('/mobile/polling')
 def mobile_polling():
     """
-    Endpoint dla aplikacji mobilnej - zwraca dane z sesji
+    Endpoint dla aplikacji mobilnej - zwraca dane w formacie zgodnym z mobile_polling.json
+    Obsługuje parametr ?detailed=true dla pełnych danych (kompatybilność wsteczna)
     """
     # Pobieramy dane z sesji
     rem_flag = session.get('rem_flag', False)
-    sleep_flag = session.get('sleep_flag', False)
-    atonia_flag = session.get('atonia_flag', False)
-    #last_update = session.get('last_update')
-    device_id = session.get('device_id')
     current_rem_phase = session.get('current_rem_phase', 0)
+    mobile_id = session.get('mobile_id', 'MOB_001')
     
-    # Pobieramy statystyki HR
-    hr_stats = get_hr_stats()
+    # Sprawdzamy czy klient chce szczegółowe dane
+    detailed = request.args.get('detailed', 'false').lower() == 'true'
     
-    # REM wykrywany gdy wszystkie warunki spełnione
-    # rem_flag już zawiera wynik detekcji z sesji
-    
-    # Przygotowujemy odpowiedź JSON
-    response_data = {
-        "status": "success",
-        "timestamp": datetime.now().isoformat(),
-        "session_data": {
-            "rem_detected": rem_flag,
-            "sleep_detected": sleep_flag,
-            "atonia_detected": atonia_flag,
-            "device_id": device_id
-        },
-        "hr_statistics": hr_stats,
-        "rem_phases": {
-            "current_phase": current_rem_phase,
+    if detailed:
+        # Kompatybilność wsteczna - pełny format danych
+        sleep_flag = session.get('sleep_flag', False)
+        atonia_flag = session.get('atonia_flag', False)
+        device_id = session.get('device_id')
+        hr_stats = get_hr_stats()
+        
+        response_data = {
+            "status": "success",
+            "timestamp": datetime.now().isoformat(),
+            "session_data": {
+                "rem_detected": rem_flag,
+                "sleep_detected": sleep_flag,
+                "atonia_detected": atonia_flag,
+                "device_id": device_id
+            },
+            "hr_statistics": hr_stats,
+            "rem_phases": {
+                "current_phase": current_rem_phase,
+            }
         }
-    }
+    else:
+        # Nowy prosty format - zgodny z mobile_polling.json
+        response_data = {
+            "mobile_id": mobile_id,
+            "rem": "true" if rem_flag else "false",
+            "current_rem_phase": str(current_rem_phase)
+        }
     
     return jsonify(response_data)
 

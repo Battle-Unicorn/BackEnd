@@ -1,4 +1,5 @@
 {
   "mobile_id": "MOB_001",
-  "status": "active"
+  "rem": "true",
+  "current_rem_phase": "1"
 }
