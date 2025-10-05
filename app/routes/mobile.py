@@ -223,9 +223,11 @@ def generate_audio_on_demand():
                 "session_key": session_key,
                 "tts_available": "tts_file" in audio_files,
                 "sound_available": "sound_file" in audio_files,
+                "extended_available": "extended_file" in audio_files,
                 "download_urls": {
                     "tts": f"/mobile/download_audio/{session_key}/tts",
-                    "sound": f"/mobile/download_audio/{session_key}/sound"
+                    "sound": f"/mobile/download_audio/{session_key}/sound",
+                    "extended": f"/mobile/download_audio/{session_key}/extended"
                 }
             }
         else:
@@ -267,10 +269,12 @@ def download_audio(session_key, audio_type):
             file_key = 'tts_file'
         elif audio_type == 'sound':
             file_key = 'sound_file'
+        elif audio_type == 'extended':
+            file_key = 'extended_file'
         else:
             return jsonify({
                 "status": "error",
-                "message": "Invalid audio type. Use 'tts' or 'sound'"
+                "message": "Invalid audio type. Use 'tts', 'sound', or 'extended'"
             }), 400
             
         file_path = audio_files.get(file_key)

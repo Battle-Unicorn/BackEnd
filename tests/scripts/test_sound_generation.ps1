@@ -52,12 +52,33 @@ try {
         }
         
         if ($response1.audio_download_info.sound_available) {
-            Write-Host "Downloading background sound..."
+            Write-Host "Downloading background sound (30s loop)..."
             try {
                 Invoke-WebRequest -Uri "$baseUrl/mobile/download_audio/$sessionKey/sound" -OutFile "test_sound.mp3"
                 Write-Host "✓ Background sound downloaded successfully!" -ForegroundColor Green
             } catch {
                 Write-Host "✗ Sound download failed: $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
+        
+        if ($response1.audio_download_info.extended_available) {
+            Write-Host "Downloading extended 15-minute audio..."
+            try {
+                Invoke-WebRequest -Uri "$baseUrl/mobile/download_audio/$sessionKey/extended" -OutFile "test_extended.mp3"
+                Write-Host "✓ Extended 15-minute audio downloaded successfully!" -ForegroundColor Green
+                
+                # Check file size to verify it's actually 15 minutes
+                $fileSize = (Get-Item "test_extended.mp3").Length
+                $fileSizeMB = [Math]::Round($fileSize / 1MB, 2)
+                Write-Host "Extended file size: $fileSizeMB MB" -ForegroundColor Cyan
+                
+                if ($fileSizeMB -gt 10) {
+                    Write-Host "✓ File size indicates ~15 minutes of audio!" -ForegroundColor Green
+                } else {
+                    Write-Host "⚠ File size seems small for 15-minute audio" -ForegroundColor Yellow
+                }
+            } catch {
+                Write-Host "✗ Extended audio download failed: $($_.Exception.Message)" -ForegroundColor Red
             }
         }
     }
@@ -92,5 +113,39 @@ try {
     Write-Host "Response body: $($_.ErrorDetails.Message)" -ForegroundColor Red
 }
 
+Write-Host "`n4. Testing extended audio functionality specifically..." -ForegroundColor Yellow
+
+# Test specific dream scenario optimized for extended audio
+$extendedTestScenario = @{
+    key_words = "gentle rain forest birds peaceful meditation"
+    place = "quiet forest clearing surrounded by ancient trees"
+} | ConvertTo-Json
+
+try {
+    Write-Host "Generating scenario optimized for 15-minute meditation audio..."
+    $extendedResponse = Invoke-RestMethod -Uri "$baseUrl/mobile/generate_audio" -Method POST -Body $extendedTestScenario -ContentType "application/json"
+    
+    Write-Host "✓ Extended audio scenario generated!" -ForegroundColor Green
+    Write-Host "TTS Text: $($extendedResponse.tts_text)" -ForegroundColor Cyan
+    Write-Host "Sound Description: $($extendedResponse.sound_description)" -ForegroundColor Cyan
+    
+    if ($extendedResponse.audio_available) {
+        Write-Host "`nAudio file info:" -ForegroundColor Yellow
+        Write-Host "  - TTS Available: $($extendedResponse.audio_download_info.tts_available)" -ForegroundColor Cyan
+        Write-Host "  - 30s Loop Available: $($extendedResponse.audio_download_info.sound_available)" -ForegroundColor Cyan
+        Write-Host "  - 15min Extended Available: $($extendedResponse.audio_download_info.extended_available)" -ForegroundColor Cyan
+        
+        if ($extendedResponse.audio_download_info.extended_available) {
+            Write-Host "`n🎵 Ready for lucid dreaming with 15-minute extended audio!" -ForegroundColor Green
+        }
+    }
+} catch {
+    Write-Host "✗ Extended audio test failed: $($_.Exception.Message)" -ForegroundColor Red
+}
+
 Write-Host "`n=== Test Complete ===" -ForegroundColor Green
 Write-Host "Note: If API keys are not configured, audio generation will return text-only responses." -ForegroundColor Yellow
+Write-Host "The extended audio feature creates:" -ForegroundColor Cyan
+Write-Host "  🔸 30-second looped background sounds" -ForegroundColor White
+Write-Host "  🔸 15-minute extended version with fade-in/out" -ForegroundColor White  
+Write-Host "  🔸 TTS mixed after 10-second fade-in" -ForegroundColor White

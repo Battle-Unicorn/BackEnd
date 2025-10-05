@@ -1,5 +1,8 @@
 FROM python:3.13
 
+# Instaluj ffmpeg dla pydub
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Ustaw katalog roboczy w kontenerze
 WORKDIR /app
 
