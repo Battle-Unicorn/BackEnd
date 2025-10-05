@@ -6,7 +6,7 @@ $baseUrl = "http://localhost:8080"
 # Test 1: Wyślij dane sensorowe
 Write-Host "`n1. Testing /embedded/sensor_data..." -ForegroundColor Yellow
 try {
-    $sensorData = Get-Content "Mock_Scripts/data_sensor_data.json" -Raw
+    $sensorData = Get-Content "../mock_data/data_sensor_data.json" -Raw
     $result1 = Invoke-RestMethod -Uri "$baseUrl/embedded/sensor_data" -Method POST -Body $sensorData -ContentType "application/json"
     Write-Host "SUCCESS: Sensor data sent!" -ForegroundColor Green
     Write-Host "HR samples received: $($result1.samples_received.hr)" -ForegroundColor Cyan
