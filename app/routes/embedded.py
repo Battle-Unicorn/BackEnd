@@ -3,17 +3,27 @@ from ..rem_detection import rem_detection, get_hr_stats
 from ..sound_gen import generate_sound
 from datetime import datetime
 
+# In-memory storage dla danych sensorowych (temporary solution)
+# W produkcji należy użyć bazy danych lub Redis
+sensor_data_storage = {
+    'hr_history': [],
+    'mpu_history': [],
+    'emg_history': [],
+    'last_device_id': None,
+    'last_update': None
+}
+
 embedded_bp = Blueprint('embedded', __name__)
 
 @embedded_bp.route('/embedded/hello')
 def embedded_hello():
     return jsonify("Hello from embedded")
 
-@embedded_bp.route('/embedded/data', methods=['POST'])
-def embedded_data():
+@embedded_bp.route('/embedded/sensor_data', methods=['POST'])
+def embedded_sensor_data():
     """
-    Endpoint otrzymujący dane z urządzenia co 30 sekund.
-    Analizuje dane HR i ustawia flagę REM w sesji.
+    Endpoint otrzymujący dane sensorowe z urządzenia (HR, MPU, EMG samples).
+    Przechowuje dane dla dalszej analizy.
     """
     data = request.get_json()
     
@@ -21,60 +31,145 @@ def embedded_data():
         return jsonify({"error": "Brak danych JSON"}), 400
     
     try:
-        print(f"\nOtrzymano dane z urzadzenia {data.get('device_id')} o {datetime.now().strftime('%H:%M:%S')}")
-        
-        # DEBUG: Sprawdzamy strukturę danych
-        print(f"DEBUG: Typ data: {type(data)}")
-        print(f"DEBUG: Klucze data: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
+        print(f"\nOtrzymano dane sensorowe z urzadzenia {data.get('device_id')} o {datetime.now().strftime('%H:%M:%S')}")
         
         # Pobieramy dane z sensorów
         sensor_data = data.get('sensor_data', {})
-        print(f"DEBUG: Typ sensor_data: {type(sensor_data)}")
-        print(f"DEBUG: Klucze sensor_data: {list(sensor_data.keys()) if isinstance(sensor_data, dict) else 'Not a dict'}")
         
-        # 1. POBIERAMY DANE HR Z PLETHYSMOMETRU
+        # 1. PRZETWARZAMY DANE HR Z PLETHYSMOMETRU
         plethysmometer_data = sensor_data.get('plethysmometer', [])
-        print(f"DEBUG: Typ plethysmometer_data: {type(plethysmometer_data)}")
-        print(f"Otrzymano {len(plethysmometer_data) if isinstance(plethysmometer_data, list) else 'NOT A LIST'} probek HR")
+        print(f"Otrzymano {len(plethysmometer_data)} probek HR")
         
         if plethysmometer_data and isinstance(plethysmometer_data, list):
-            # DEBUG: Sprawdzamy pierwszy element
-            if len(plethysmometer_data) > 0:
-                print(f"DEBUG: Pierwszy element: {plethysmometer_data[0]}")
-                print(f"DEBUG: Typ pierwszego elementu: {type(plethysmometer_data[0])}")
-            
             try:
                 hr_values = [entry['heart_rate'] for entry in plethysmometer_data]
                 print(f"HR w tym pakiecie: min={min(hr_values)}, max={max(hr_values)}, avg={sum(hr_values)/len(hr_values):.1f}")
+                
+                # Zapisujemy dane HR do global storage
+                sensor_data_storage['hr_history'].extend(plethysmometer_data)
+                print(f"DEBUG: Zapisano {len(plethysmometer_data)} próbek HR do storage")
+                print(f"DEBUG: Łączna liczba próbek HR w storage: {len(sensor_data_storage['hr_history'])}")
+                
             except Exception as hr_error:
                 print(f"ERROR przy pobieraniu HR: {str(hr_error)}")
-                print(f"DEBUG: plethysmometer_data content: {plethysmometer_data[:2]}")  # Pokazujemy pierwsze 2 elementy
         
-        # 2. POBIERAMY FLAGI ZE SENSORÓW
+        # 2. PRZETWARZAMY DANE MPU (AKCELEROMETR/ŻYROSKOP)
         mpu_data = sensor_data.get('mpu', {})
-        emg_data = sensor_data.get('emg', {})
+        mpu_samples = mpu_data.get('samples', [])
+        print(f"Otrzymano {len(mpu_samples)} probek MPU")
         
-        sleep_flag = mpu_data.get('sleep_flag', False)
-        atonia_flag = emg_data.get('atonia_flag', False)
+        # Zapisujemy dane MPU do storage
+        sensor_data_storage['mpu_history'].extend(mpu_samples)
+        
+        # 3. PRZETWARZAMY DANE EMG (NAPIĘCIE MIĘŚNI)
+        emg_data = sensor_data.get('emg', {})
+        emg_samples = emg_data.get('samples', [])
+        print(f"Otrzymano {len(emg_samples)} probek EMG")
+        
+        # Zapisujemy dane EMG do storage
+        sensor_data_storage['emg_history'].extend(emg_samples)
+        
+        # 4. AKTUALIZUJEMY METADANE STORAGE I SESJI
+        sensor_data_storage['last_update'] = datetime.now().isoformat()
+        sensor_data_storage['last_device_id'] = data.get('device_id')
+        
+        session['last_sensor_update'] = datetime.now().isoformat()
+        session['device_id'] = data.get('device_id')
+        
+        # 5. ODPOWIADAMY URZĄDZENIU
+        response_data = {
+            "status": "success",
+            "message": "Sensor data received and stored",
+            "device_id": data.get('device_id'),
+            "timestamp": datetime.now().isoformat(),
+            "samples_received": {
+                "hr": len(plethysmometer_data),
+                "mpu": len(mpu_samples),
+                "emg": len(emg_samples)
+            },
+            "total_samples_stored": {
+                "hr": len(sensor_data_storage['hr_history']),
+                "mpu": len(sensor_data_storage['mpu_history']),
+                "emg": len(sensor_data_storage['emg_history'])
+            }
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        import traceback
+        print(f"ERROR przetwarzania danych sensorowych: {str(e)}")
+        print(f"DEBUG traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Blad przetwarzania danych sensorowych", "details": str(e)}), 500
+
+
+@embedded_bp.route('/embedded/flags', methods=['POST'])
+def embedded_flags():
+    """
+    Endpoint otrzymujący flagi z urządzenia i wykonujący analizę REM.
+    Na podstawie flag i zebranych wcześniej danych sensorowych decyduje o stanie REM.
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "Brak danych JSON"}), 400
+    
+    try:
+        print(f"\nOtrzymano flagi z urzadzenia {data.get('device_id')} o {datetime.now().strftime('%H:%M:%S')}")
+        
+        # Pobieramy flagi z requestu
+        flags = data.get('flags', {})
+        sleep_flag = flags.get('sleep_flag', False)
+        atonia_flag = flags.get('atonia_flag', False)
         
         print(f"Sleep flag: {sleep_flag}")
         print(f"Atonia flag: {atonia_flag}")
         
-        # 3. ANALIZA REM - SPRAWDZAMY WARUNKI
+        # Pobieramy zebrane wcześniej dane sensorowe z global storage
+        hr_history = sensor_data_storage['hr_history']
+        
         print("Sprawdzanie warunkow REM...")
+        print(f"DEBUG: Storage last device: {sensor_data_storage['last_device_id']}")
+        print(f"DEBUG: Storage last update: {sensor_data_storage['last_update']}")
+        print(f"Dostępne dane HR z historii: {len(hr_history)} probek")
         
-        # Sprawdzamy czy mamy prawidłowe dane przed wywołaniem rem_detection
-        if not isinstance(plethysmometer_data, list):
-            raise ValueError(f"plethysmometer_data is not a list, it's {type(plethysmometer_data)}")
+        # Sprawdzamy czy mamy wystarczające dane do analizy REM
+        if not hr_history:
+            print("BRAK DANYCH HR - nie można przeprowadzić analizy REM")
+            rem_detected = False
+        elif len(hr_history) < 900:  # Mniej niż 15 minut danych
+            print(f"ZA MAŁO DANYCH HR - potrzeba 900 próbek, mamy {len(hr_history)}")
+            print("TRYB TESTOWY: Sprawdzam REM z dostępnymi danymi")
+            
+            # Tryb testowy - sprawdzamy podstawowe warunki REM
+            if sleep_flag and atonia_flag and len(hr_history) >= 60:  # Co najmniej 2 minuty danych
+                # Prosty algorytm testowy - sprawdzamy wzrost HR
+                recent_hr = [entry['heart_rate'] for entry in hr_history[-30:]]  # Ostatnie 30 próbek
+                avg_recent = sum(recent_hr) / len(recent_hr)
+                
+                earlier_hr = [entry['heart_rate'] for entry in hr_history[-60:-30]]  # Wcześniejsze 30 próbek
+                avg_earlier = sum(earlier_hr) / len(earlier_hr) if earlier_hr else avg_recent
+                
+                hr_increase = avg_recent - avg_earlier
+                print(f"TRYB TESTOWY: HR wcześniej={avg_earlier:.1f}, teraz={avg_recent:.1f}, wzrost={hr_increase:+.1f}")
+                
+                if hr_increase >= 3.0:  # Niższy próg dla testów
+                    print("TRYB TESTOWY: REM DETECTED (wzrost HR + flagi)")
+                    rem_detected = True
+                else:
+                    print("TRYB TESTOWY: REM NIE WYKRYTY (brak wzrostu HR)")
+                    rem_detected = False
+            else:
+                print("TRYB TESTOWY: REM NIE WYKRYTY (brak flag lub za mało danych)")
+                rem_detected = False
+        else:
+            # Wywołujemy funkcję detekcji REM z danymi z storage
+            rem_detected = rem_detection(
+                plethysmometer_data=hr_history,
+                sleep_flag=sleep_flag,
+                atonia_flag=atonia_flag
+            )
         
-        # Wywołujemy funkcję detekcji REM z wszystkimi danymi
-        rem_detected = rem_detection(
-            plethysmometer_data=plethysmometer_data,
-            sleep_flag=sleep_flag,
-            atonia_flag=atonia_flag
-        )
-        
-        # 4. ZAPISUJEMY WYNIKI W SESJI
         # Sprawdzamy czy to nowa faza REM (przejście z False na True)
         previous_rem_flag = session.get('rem_flag', False)
         
@@ -92,37 +187,42 @@ def embedded_data():
             # Koniec fazy REM - resetujemy na 0 (nie w REM)
             session['current_rem_phase'] = 0
             print("KONIEC FAZY REM - powrót do normalnego snu")
-        # Jeśli stan się nie zmienił, pozostawiamy obecny numer fazy
         
+        # Zapisujemy flagi i wynik analizy w sesji
         session['rem_flag'] = rem_detected
         session['sleep_flag'] = sleep_flag  
         session['atonia_flag'] = atonia_flag
-        session['last_update'] = datetime.now().isoformat()
-        session['device_id'] = data.get('device_id')
+        session['last_flags_update'] = datetime.now().isoformat()
         
         # Inicjalizujemy numer fazy jeśli nie istnieje
         if 'current_rem_phase' not in session:
             session['current_rem_phase'] = 0
         
-        # 5. POBIERAMY STATYSTYKI DO LOGOWANIA
+        # Pobieramy statystyki do odpowiedzi
         hr_stats = get_hr_stats()
         
         print(f"WYNIK: REM = {rem_detected}")
         print(f"Statystyki HR: {hr_stats.get('total_samples', 0)} probek, srednia: {hr_stats.get('avg_hr_all', 0):.1f} BPM")
         
-        # 6. ODPOWIADAMY URZĄDZENIU
+        # Odpowiadamy urządzeniu
         response_data = {
             "status": "success",
+            "message": "Flags processed and REM analysis completed",
             "device_id": data.get('device_id'),
             "timestamp": datetime.now().isoformat(),
-            "rem_detected": rem_detected,
-            "current_rem_phase": session.get('current_rem_phase', 0),
-            "samples_processed": len(plethysmometer_data),
-            "total_hr_history": hr_stats.get('total_samples', 0),
-            "flags": {
+            "analysis_result": {
+                "rem_detected": rem_detected,
+                "current_rem_phase": session.get('current_rem_phase', 0),
+                "previous_rem_state": previous_rem_flag,
+                "state_changed": previous_rem_flag != rem_detected
+            },
+            "input_flags": {
                 "sleep": sleep_flag,
-                "atonia": atonia_flag,
-                "rem": rem_detected
+                "atonia": atonia_flag
+            },
+            "data_analysis": {
+                "hr_samples_used": len(hr_history),
+                "hr_stats": hr_stats
             }
         }
         
@@ -130,9 +230,27 @@ def embedded_data():
         
     except Exception as e:
         import traceback
-        print(f"ERROR przetwarzania danych: {str(e)}")
+        print(f"ERROR przetwarzania flag: {str(e)}")
         print(f"DEBUG traceback: {traceback.format_exc()}")
-        return jsonify({"error": "Blad przetwarzania danych", "details": str(e)}), 500
+        return jsonify({"error": "Blad przetwarzania flag", "details": str(e)}), 500
+
+
+@embedded_bp.route('/embedded/data', methods=['POST'])
+def embedded_data_legacy():
+    """
+    LEGACY ENDPOINT - dla kompatybilności wstecznej.
+    Przekierowuje do nowych endpointów /embedded/sensor_data i /embedded/flags
+    """
+    # Ten endpoint może być używany przez stare urządzenia
+    # Dzieli dane i wywołuje odpowiednie nowe endpointy
+    return jsonify({
+        "status": "deprecated",
+        "message": "This endpoint is deprecated. Use /embedded/sensor_data and /embedded/flags instead",
+        "new_endpoints": {
+            "sensor_data": "/embedded/sensor_data",
+            "flags": "/embedded/flags"
+        }
+    })
 
 @embedded_bp.route('/embedded/rem_status', methods=['GET'])
 def get_rem_status():

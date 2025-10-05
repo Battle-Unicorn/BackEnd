@@ -1,19 +1,7 @@
-"""
-DZIAŁANIE:
-Pobieramy z jsona w mobile.py dane - key_words i place
-Przekazujemy je do odpowiednio przygotowanego prompta deepseek
-Prompt zwraca:
-    Tekst do tts eleven labs - łagodny głos pomagający w przywołaniu świadomego snu
-    Tekst do sound effect od eleven labs - pętla z łagodną muzyką
-Oba elementy mają odwoływać się do zmiennych"""
-
 import os
-import requests
-import base64
 from datetime import datetime
 from openai import OpenAI
 from elevenlabs.client import ElevenLabs
-import tempfile
 import json
 
 def process_dream_scenario(key_words, place):
