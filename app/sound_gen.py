@@ -5,6 +5,57 @@ from elevenlabs.client import ElevenLabs
 import json
 import io
 
+# Import shared storage for mobile session scenarios
+def get_shared_storage():
+    """Import shared storage - lazy import aby uniknąć cyklicznych importów"""
+    try:
+        from .routes.embedded import shared_storage
+        return shared_storage
+    except ImportError:
+        # Fallback jeśli nie można zaimportować
+        return None
+
+def get_dream_scenarios_from_storage():
+    """Pobiera scenariusze snów z shared storage"""
+    shared_storage = get_shared_storage()
+    if not shared_storage:
+        return []
+    
+    # Szukamy scenariuszy w aktywnych sesjach mobile
+    for mobile_id, mobile_data in shared_storage['mobile_sessions'].items():
+        scenarios = mobile_data.get('dream_scenarios', [])
+        if scenarios:
+            print(f"Found {len(scenarios)} dream scenarios in mobile session {mobile_id}")
+            return scenarios
+    
+    return []
+
+def log_audio_generation_to_storage(scenario_result, audio_files):
+    """Loguje aktywność generowania audio do shared storage"""
+    shared_storage = get_shared_storage()
+    if not shared_storage:
+        return
+    
+    # Dodajemy log do global stats
+    if 'audio_generation_log' not in shared_storage['global_stats']:
+        shared_storage['global_stats']['audio_generation_log'] = []
+    
+    log_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'tts_text': scenario_result.get('tts_text', ''),
+        'sound_description': scenario_result.get('sound_description', ''),
+        'files_generated': list(audio_files.keys()) if audio_files else [],
+        'rem_phase': shared_storage['current_rem_state'].get('current_rem_phase', 0)
+    }
+    
+    shared_storage['global_stats']['audio_generation_log'].append(log_entry)
+    
+    # Ograniczamy log do ostatnich 50 wpisów
+    if len(shared_storage['global_stats']['audio_generation_log']) > 50:
+        shared_storage['global_stats']['audio_generation_log'] = shared_storage['global_stats']['audio_generation_log'][-50:]
+    
+    print(f"Logged audio generation to shared storage: {len(audio_files) if audio_files else 0} files")
+
 # Try to import pydub, but handle the Python 3.13 audioop issue
 try:
     from pydub import AudioSegment
@@ -189,6 +240,9 @@ def generate_sound(key_words, place):
 
         print(f"Audio files generated: {audio_files}")
 
+        # Logujemy aktywność do shared storage
+        log_audio_generation_to_storage(scenario_result, audio_files)
+        
         return {
             "status": "success",
             "tts_text": scenario_result["tts_text"],

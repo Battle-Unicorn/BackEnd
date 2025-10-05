@@ -5,12 +5,66 @@ from datetime import datetime
 import json
 import os
 
+# Import shared storage z embedded.py
+from .embedded import shared_storage
+
 mobile_bp = Blueprint('mobile', __name__)
+
+def get_mobile_session(mobile_id):
+    """Pobiera mobile session storage, tworzy jeśli nie istnieje"""
+    if mobile_id not in shared_storage['mobile_sessions']:
+        shared_storage['mobile_sessions'][mobile_id] = {
+            'device_id': None,
+            'dream_scenarios': [],
+            'last_polling': None,
+            'created_at': datetime.now().isoformat()
+        }
+        shared_storage['global_stats']['active_mobile_sessions'].add(mobile_id)
+    return shared_storage['mobile_sessions'][mobile_id]
+
+def link_mobile_to_device(mobile_id, device_id=None):
+    """Łączy sesję mobile z urządzeniem embedded"""
+    mobile_session = get_mobile_session(mobile_id)
+    if device_id:
+        mobile_session['device_id'] = device_id
+        print(f"Połączono mobile {mobile_id} z urządzeniem {device_id}")
+    return mobile_session
 
 
 @mobile_bp.route('/mobile/hello')
 def mobile_hello():
     return jsonify("Hello from mobile")
+
+@mobile_bp.route('/mobile/connect_device', methods=['POST'])
+def connect_device():
+    """
+    Endpoint do łączenia aplikacji mobilnej z urządzeniem embedded
+    Oczekuje JSON: {"mobile_id": "MOB_001", "device_id": "DEV_001"}
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "No JSON data provided"}), 400
+            
+        mobile_id = data.get('mobile_id')
+        device_id = data.get('device_id')
+        
+        if not mobile_id or not device_id:
+            return jsonify({"status": "error", "message": "Both mobile_id and device_id are required"}), 400
+            
+        # Łączymy mobile z device
+        mobile_session = link_mobile_to_device(mobile_id, device_id)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Mobile {mobile_id} connected to device {device_id}",
+            "mobile_id": mobile_id,
+            "device_id": device_id,
+            "connection_time": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error connecting device: {str(e)}"}), 500
 
 @mobile_bp.route('/mobile/polling')
 def mobile_polling():
@@ -18,41 +72,49 @@ def mobile_polling():
     Endpoint dla aplikacji mobilnej - zwraca dane w formacie zgodnym z mobile_polling.json
     Obsługuje parametr ?detailed=true dla pełnych danych (kompatybilność wsteczna)
     """
-    # Pobieramy dane z sesji
-    rem_flag = session.get('rem_flag', False)
-    current_rem_phase = session.get('current_rem_phase', 0)
-    mobile_id = session.get('mobile_id', 'MOB_001')
+    # Pobieramy mobile_id z parametru lub session
+    mobile_id = request.args.get('mobile_id') or session.get('mobile_id', 'MOB_001')
+    
+    # Pobieramy dane z shared storage
+    rem_state = shared_storage['current_rem_state']
+    mobile_session = get_mobile_session(mobile_id)
+    
+    # Aktualizujemy czas ostatniego pollingu
+    mobile_session['last_polling'] = datetime.now().isoformat()
     
     # Sprawdzamy czy klient chce szczegółowe dane
     detailed = request.args.get('detailed', 'false').lower() == 'true'
     
     if detailed:
         # Kompatybilność wsteczna - pełny format danych
-        sleep_flag = session.get('sleep_flag', False)
-        atonia_flag = session.get('atonia_flag', False)
-        device_id = session.get('device_id')
         hr_stats = get_hr_stats()
         
         response_data = {
             "status": "success",
             "timestamp": datetime.now().isoformat(),
             "session_data": {
-                "rem_detected": rem_flag,
-                "sleep_detected": sleep_flag,
-                "atonia_detected": atonia_flag,
-                "device_id": device_id
+                "rem_detected": rem_state['rem_detected'],
+                "sleep_detected": rem_state['sleep_flag'],
+                "atonia_detected": rem_state['atonia_flag'],
+                "device_id": rem_state['last_device_id']
             },
             "hr_statistics": hr_stats,
             "rem_phases": {
-                "current_phase": current_rem_phase,
+                "current_phase": rem_state['current_rem_phase'],
+                "total_phases": shared_storage['global_stats']['total_rem_phases']
+            },
+            "mobile_session": {
+                "mobile_id": mobile_id,
+                "connected_device": mobile_session.get('device_id'),
+                "scenarios_loaded": len(mobile_session.get('dream_scenarios', []))
             }
         }
     else:
         # Nowy prosty format - zgodny z mobile_polling.json
         response_data = {
             "mobile_id": mobile_id,
-            "rem": "true" if rem_flag else "false",
-            "current_rem_phase": str(current_rem_phase)
+            "rem": "true" if rem_state['rem_detected'] else "false",
+            "current_rem_phase": str(rem_state['current_rem_phase'])
         }
     
     return jsonify(response_data)
@@ -92,10 +154,19 @@ def load_dream_scenarios():
                 "message": "'dream_keywords' must be an array"
             }), 400
             
-        # Zapisujemy scenariusze w sesji
+        # Pobieramy mobile_id i łączymy z device_id jeśli podano
+        mobile_id = scenarios_data.get('mobile_id', 'unknown')
+        device_id = scenarios_data.get('device_id')  # Opcjonalne połączenie z urządzeniem
+        
+        # Zapisujemy scenariusze w shared storage
+        mobile_session = link_mobile_to_device(mobile_id, device_id)
+        mobile_session['dream_scenarios'] = scenarios_data['dream_keywords']
+        mobile_session['current_scenario_index'] = 0
+        
+        # Zachowujemy kompatybilność z sesją
         session['dream_scenarios'] = scenarios_data['dream_keywords']
         session['current_scenario_index'] = 0
-        session['mobile_id'] = scenarios_data.get('mobile_id', 'unknown')
+        session['mobile_id'] = mobile_id
         
         # Wywołujemy generate_sound dla każdego scenariusza który ma dane
         processed_scenarios = 0

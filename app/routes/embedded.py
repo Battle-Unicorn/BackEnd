@@ -3,17 +3,57 @@ from ..rem_detection import rem_detection, get_hr_stats
 from ..sound_gen import generate_sound
 from datetime import datetime
 
-# In-memory storage dla danych sensorowych (temporary solution)
+# Shared In-Memory Storage dla komunikacji między embedded i mobile
 # W produkcji należy użyć bazy danych lub Redis
-sensor_data_storage = {
-    'hr_history': [],
-    'mpu_history': [],
-    'emg_history': [],
-    'last_device_id': None,
-    'last_update': None
+shared_storage = {
+    # Dane sensorowe per device_id
+    'devices': {},  # device_id -> {'hr_history': [], 'mpu_history': [], 'emg_history': [], 'last_update': ''}
+    
+    # Aktualny stan REM (globalny lub per device)
+    'current_rem_state': {
+        'rem_detected': False,
+        'current_rem_phase': 0,
+        'sleep_flag': False,
+        'atonia_flag': False,
+        'last_device_id': None,
+        'last_update': None
+    },
+    
+    # Mobile sessions połączone z device_id
+    'mobile_sessions': {},  # mobile_id -> {'device_id': '', 'dream_scenarios': [], 'last_polling': ''}
+    
+    # Statystyki globalne
+    'global_stats': {
+        'total_rem_phases': 0,
+        'active_devices': set(),
+        'active_mobile_sessions': set()
+    }
 }
 
 embedded_bp = Blueprint('embedded', __name__)
+
+def get_device_storage(device_id):
+    """Pobiera storage dla danego device_id, tworzy jeśli nie istnieje"""
+    if device_id not in shared_storage['devices']:
+        shared_storage['devices'][device_id] = {
+            'hr_history': [],
+            'mpu_history': [],
+            'emg_history': [],
+            'last_update': None
+        }
+        shared_storage['global_stats']['active_devices'].add(device_id)
+    return shared_storage['devices'][device_id]
+
+def update_rem_state(device_id, rem_detected, sleep_flag, atonia_flag, current_rem_phase):
+    """Aktualizuje globalny stan REM"""
+    shared_storage['current_rem_state'].update({
+        'rem_detected': rem_detected,
+        'current_rem_phase': current_rem_phase,
+        'sleep_flag': sleep_flag,
+        'atonia_flag': atonia_flag,
+        'last_device_id': device_id,
+        'last_update': datetime.now().isoformat()
+    })
 
 @embedded_bp.route('/embedded/hello')
 def embedded_hello():
@@ -31,7 +71,11 @@ def embedded_sensor_data():
         return jsonify({"error": "Brak danych JSON"}), 400
     
     try:
-        print(f"\nOtrzymano dane sensorowe z urzadzenia {data.get('device_id')} o {datetime.now().strftime('%H:%M:%S')}")
+        device_id = data.get('device_id')
+        print(f"\nOtrzymano dane sensorowe z urzadzenia {device_id} o {datetime.now().strftime('%H:%M:%S')}")
+        
+        # Pobieramy storage dla tego urządzenia
+        device_storage = get_device_storage(device_id)
         
         # Pobieramy dane z sensorów
         sensor_data = data.get('sensor_data', {})
@@ -45,10 +89,10 @@ def embedded_sensor_data():
                 hr_values = [entry['heart_rate'] for entry in plethysmometer_data]
                 print(f"HR w tym pakiecie: min={min(hr_values)}, max={max(hr_values)}, avg={sum(hr_values)/len(hr_values):.1f}")
                 
-                # Zapisujemy dane HR do global storage
-                sensor_data_storage['hr_history'].extend(plethysmometer_data)
+                # Zapisujemy dane HR do device storage
+                device_storage['hr_history'].extend(plethysmometer_data)
                 print(f"DEBUG: Zapisano {len(plethysmometer_data)} próbek HR do storage")
-                print(f"DEBUG: Łączna liczba próbek HR w storage: {len(sensor_data_storage['hr_history'])}")
+                print(f"DEBUG: Łączna liczba próbek HR w storage: {len(device_storage['hr_history'])}")
                 
             except Exception as hr_error:
                 print(f"ERROR przy pobieraniu HR: {str(hr_error)}")
@@ -59,7 +103,7 @@ def embedded_sensor_data():
         print(f"Otrzymano {len(mpu_samples)} probek MPU")
         
         # Zapisujemy dane MPU do storage
-        sensor_data_storage['mpu_history'].extend(mpu_samples)
+        device_storage['mpu_history'].extend(mpu_samples)
         
         # 3. PRZETWARZAMY DANE EMG (NAPIĘCIE MIĘŚNI)
         emg_data = sensor_data.get('emg', {})
@@ -67,11 +111,10 @@ def embedded_sensor_data():
         print(f"Otrzymano {len(emg_samples)} probek EMG")
         
         # Zapisujemy dane EMG do storage
-        sensor_data_storage['emg_history'].extend(emg_samples)
+        device_storage['emg_history'].extend(emg_samples)
         
         # 4. AKTUALIZUJEMY METADANE STORAGE I SESJI
-        sensor_data_storage['last_update'] = datetime.now().isoformat()
-        sensor_data_storage['last_device_id'] = data.get('device_id')
+        device_storage['last_update'] = datetime.now().isoformat()
         
         session['last_sensor_update'] = datetime.now().isoformat()
         session['device_id'] = data.get('device_id')
@@ -88,9 +131,9 @@ def embedded_sensor_data():
                 "emg": len(emg_samples)
             },
             "total_samples_stored": {
-                "hr": len(sensor_data_storage['hr_history']),
-                "mpu": len(sensor_data_storage['mpu_history']),
-                "emg": len(sensor_data_storage['emg_history'])
+                "hr": len(device_storage['hr_history']),
+                "mpu": len(device_storage['mpu_history']),
+                "emg": len(device_storage['emg_history'])
             }
         }
         
@@ -115,7 +158,11 @@ def embedded_flags():
         return jsonify({"error": "Brak danych JSON"}), 400
     
     try:
-        print(f"\nOtrzymano flagi z urzadzenia {data.get('device_id')} o {datetime.now().strftime('%H:%M:%S')}")
+        device_id = data.get('device_id')
+        print(f"\nOtrzymano flagi z urzadzenia {device_id} o {datetime.now().strftime('%H:%M:%S')}")
+        
+        # Pobieramy storage dla tego urządzenia
+        device_storage = get_device_storage(device_id)
         
         # Pobieramy flagi z requestu
         flags = data.get('flags', {})
@@ -125,12 +172,12 @@ def embedded_flags():
         print(f"Sleep flag: {sleep_flag}")
         print(f"Atonia flag: {atonia_flag}")
         
-        # Pobieramy zebrane wcześniej dane sensorowe z global storage
-        hr_history = sensor_data_storage['hr_history']
+        # Pobieramy zebrane wcześniej dane sensorowe z device storage
+        hr_history = device_storage['hr_history']
         
         print("Sprawdzanie warunkow REM...")
-        print(f"DEBUG: Storage last device: {sensor_data_storage['last_device_id']}")
-        print(f"DEBUG: Storage last update: {sensor_data_storage['last_update']}")
+        print(f"DEBUG: Storage last device: {device_id}")
+        print(f"DEBUG: Storage last update: {device_storage['last_update']}")
         print(f"Dostępne dane HR z historii: {len(hr_history)} probek")
         
         # Sprawdzamy czy mamy wystarczające dane do analizy REM
@@ -170,14 +217,14 @@ def embedded_flags():
                 atonia_flag=atonia_flag
             )
         
-        # Sprawdzamy czy to nowa faza REM (przejście z False na True)
-        previous_rem_flag = session.get('rem_flag', False)
+        # Pobieramy poprzedni stan REM z shared storage
+        previous_rem_flag = shared_storage['current_rem_state']['rem_detected']
         
         # Logika numeru bieżącej fazy REM
         if not previous_rem_flag and rem_detected:
             # Początek nowej fazy REM - zwiększamy numer fazy
-            current_rem_phase = session.get('current_rem_phase', 0) + 1
-            session['current_rem_phase'] = current_rem_phase
+            current_rem_phase = shared_storage['current_rem_state']['current_rem_phase'] + 1
+            shared_storage['global_stats']['total_rem_phases'] = current_rem_phase
             print(f"NOWA FAZA REM WYKRYTA! Numer bieżącej fazy: {current_rem_phase}")
             
             # Automatyczne uruchomienie scenariusza dla tej fazy REM
@@ -185,18 +232,21 @@ def embedded_flags():
             
         elif previous_rem_flag and not rem_detected:
             # Koniec fazy REM - resetujemy na 0 (nie w REM)
-            session['current_rem_phase'] = 0
+            current_rem_phase = 0
             print("KONIEC FAZY REM - powrót do normalnego snu")
+        else:
+            # Bez zmiany stanu - zachowujemy obecny numer fazy
+            current_rem_phase = shared_storage['current_rem_state']['current_rem_phase']
         
-        # Zapisujemy flagi i wynik analizy w sesji
+        # Aktualizujemy shared storage z nowym stanem REM
+        update_rem_state(device_id, rem_detected, sleep_flag, atonia_flag, current_rem_phase)
+        
+        # Zachowujemy kompatybilność z sesją dla pojedynczych żądań
         session['rem_flag'] = rem_detected
         session['sleep_flag'] = sleep_flag  
         session['atonia_flag'] = atonia_flag
+        session['current_rem_phase'] = current_rem_phase
         session['last_flags_update'] = datetime.now().isoformat()
-        
-        # Inicjalizujemy numer fazy jeśli nie istnieje
-        if 'current_rem_phase' not in session:
-            session['current_rem_phase'] = 0
         
         # Pobieramy statystyki do odpowiedzi
         hr_stats = get_hr_stats()
@@ -212,7 +262,7 @@ def embedded_flags():
             "timestamp": datetime.now().isoformat(),
             "analysis_result": {
                 "rem_detected": rem_detected,
-                "current_rem_phase": session.get('current_rem_phase', 0),
+                "current_rem_phase": current_rem_phase,
                 "previous_rem_state": previous_rem_flag,
                 "state_changed": previous_rem_flag != rem_detected
             },
@@ -255,26 +305,27 @@ def embedded_data_legacy():
 @embedded_bp.route('/embedded/rem_status', methods=['GET'])
 def get_rem_status():
     """
-    Endpoint dla aplikacji mobilnej - zwraca aktualny stan REM
+    Endpoint dla aplikacji mobilnej - zwraca aktualny stan REM z shared storage
     """
-    rem_flag = session.get('rem_flag', False)
-    sleep_flag = session.get('sleep_flag', False)
-    atonia_flag = session.get('atonia_flag', False)
-    last_update = session.get('last_update')
-    device_id = session.get('device_id')
-    current_rem_phase = session.get('current_rem_phase', 0)
+    # Pobieramy stan z shared storage
+    rem_state = shared_storage['current_rem_state']
     
     # Pobieramy statystyki HR
     hr_stats = get_hr_stats()
     
     return jsonify({
-        "rem_detected": rem_flag,
-        "sleep_detected": sleep_flag,
-        "atonia_detected": atonia_flag,
-        "current_rem_phase": current_rem_phase,
-        "last_update": last_update,
-        "device_id": device_id,
-        "hr_stats": hr_stats
+        "rem_detected": rem_state['rem_detected'],
+        "sleep_detected": rem_state['sleep_flag'],
+        "atonia_detected": rem_state['atonia_flag'],
+        "current_rem_phase": rem_state['current_rem_phase'],
+        "last_update": rem_state['last_update'],
+        "device_id": rem_state['last_device_id'],
+        "hr_stats": hr_stats,
+        "global_stats": {
+            "total_rem_phases": shared_storage['global_stats']['total_rem_phases'],
+            "active_devices": len(shared_storage['global_stats']['active_devices']),
+            "active_mobile_sessions": len(shared_storage['global_stats']['active_mobile_sessions'])
+        }
     })
 
 @embedded_bp.route('/embedded/reset_rem_counter', methods=['POST'])
@@ -282,13 +333,25 @@ def reset_rem_counter():
     """
     Endpoint do resetowania numeru fazy REM (na początku nowej sesji snu)
     """
+    # Resetujemy shared storage
+    shared_storage['current_rem_state'].update({
+        'rem_detected': False,
+        'current_rem_phase': 0,
+        'sleep_flag': False,
+        'atonia_flag': False,
+        'last_device_id': None,
+        'last_update': datetime.now().isoformat()
+    })
+    shared_storage['global_stats']['total_rem_phases'] = 0
+    
+    # Zachowujemy kompatybilność z sesją
     session['current_rem_phase'] = 0
     session['rem_flag'] = False
-    print("Zresetowano numer fazy REM")
+    print("Zresetowano numer fazy REM w shared storage")
     
     return jsonify({
         "status": "success",
-        "message": "Numer fazy REM został zresetowany",
+        "message": "Numer fazy REM został zresetowany w shared storage",
         "current_rem_phase": 0
     })
 
@@ -299,8 +362,17 @@ def try_generate_sound_for_rem_phase(rem_phase_number):
     Args:
         rem_phase_number (int): Numer fazy REM (1, 2, 3, ...)
     """
-    # Pobieramy scenariusze z sesji
-    dream_scenarios = session.get('dream_scenarios', [])
+    # Pobieramy scenariusze z shared storage (sprawdzamy wszystkie mobile sessions)
+    dream_scenarios = []
+    for mobile_id, mobile_data in shared_storage['mobile_sessions'].items():
+        if mobile_data.get('dream_scenarios'):
+            dream_scenarios = mobile_data['dream_scenarios']
+            print(f"Używam scenariuszy z sesji mobile: {mobile_id}")
+            break
+    
+    # Fallback do session jeśli nie ma w shared storage
+    if not dream_scenarios:
+        dream_scenarios = session.get('dream_scenarios', [])
     
     if not dream_scenarios:
         print(f"Brak scenariuszy dla fazy REM #{rem_phase_number}")
