@@ -1,15 +1,26 @@
 param(
-    [string]$jsonFile = "data_PS.json"
+    [string]$linkPart,
+    [string]$httpMethod,
+    [string]$jsonFile = ""
 )
 
-# Wczytaj zawartość pliku JSON do zmiennej
-$data = Get-Content -Path "./$jsonFile" -Raw | ConvertFrom-Json
+# Buduj URL z stałym hostem i portem 8080
+$url = "http://localhost:8080" + $linkPart
 
-# Wyślij żądanie POST do endpointu /add
-$response = Invoke-RestMethod -Uri http://localhost:8080/add -Method Post -Headers @{ "Content-Type" = "application/json" } -Body ($data | ConvertTo-Json)
+if ($httpMethod -ieq "GET") {
+    # Dla GET wysyłamy żądanie bez ciała
+    $response = Invoke-RestMethod -Uri $url -Method GET
+} else {
+    if ($jsonFile -ne "") {
+        # Jeśli podano plik JSON, wczytaj dane
+        $data = Get-Content -Path "./$jsonFile" -Raw | ConvertFrom-Json
+        $body = $data | ConvertTo-Json
+    } else {
+        # Jeśli nie podano pliku, użyj pustego ciała
+        $body = ""
+    }
+    $response = Invoke-RestMethod -Uri $url -Method $httpMethod -Headers @{ "Content-Type" = "application/json" } -Body $body
+}
 
-# Wyświetl odpowiedź
 Write-Output "Response: $($response)"
-
-# Opcjonalnie wyświetl wszystkie szczegóły odpowiedzi
 $response | Format-List *

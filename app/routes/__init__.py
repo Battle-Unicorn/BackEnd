@@ -1,4 +1,5 @@
 from .main import main_bp
-from .mobile_bp import mobile_bp
+from .embedded import embedded_bp
+from .mobile import mobile_bp
 
-__all__ = ['main_bp', 'mobile_bp']
+__all__ = ['main_bp', 'mobile_bp', 'embedded_bp']
