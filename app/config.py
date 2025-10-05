@@ -33,5 +33,14 @@ class Config:
         warnings.warn("FLASK_SECRET_KEY/SECRET_KEY not set in environment; using insecure dev key.")
         SECRET_KEY = 'dev-secret'
 
+    # AI API Keys
+    DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+    ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
+    
+    if not DEEPSEEK_API_KEY:
+        warnings.warn("DEEPSEEK_API_KEY not set in environment; AI text generation will not work.")
+    if not ELEVENLABS_API_KEY:
+        warnings.warn("ELEVENLABS_API_KEY not set in environment; audio generation will be limited to text only.")
+
     # Set to True to use local vendor files, False to use CDN
     USE_LOCAL_FILES = True

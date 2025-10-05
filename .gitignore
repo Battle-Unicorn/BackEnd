@@ -68,3 +68,6 @@ htmlcov/
 .cache
 coverage.xml
 *.cover
+
+# Generated audio files
+audio_files/*

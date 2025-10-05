@@ -1,0 +1,14 @@
+{
+  "device_id": "Dev_001",
+  "timestamp": "2025-09-24T23:45:12Z",
+  "flags": {
+    "sleep_flag": true,
+    "atonia_flag": true
+  },
+  "system_info": {
+    "battery_level": 82,
+    "signal_strength": 89,
+    "device_temperature": 36.9,
+    "last_calibration": "2025-09-24T20:00:00Z"
+  }
+}
