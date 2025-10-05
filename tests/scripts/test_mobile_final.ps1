@@ -17,7 +17,7 @@ try {
 # Polling
 try {
     $polling = Invoke-RestMethod -Uri "$baseUrl/mobile/polling" -Method GET
-    Write-Host "   Polling: PASS (REM: $($polling.session_data.rem_detected))" -ForegroundColor Green
+    Write-Host "   Polling: PASS (REM: $($polling.rem), ID: $($polling.mobile_id))" -ForegroundColor Green
 } catch {
     Write-Host "   Polling: FAIL" -ForegroundColor Red
 }
@@ -25,7 +25,7 @@ try {
 # Test audio generation with file verification
 Write-Host "`n2. Testing Audio Generation..." -ForegroundColor Yellow
 
-$beforeFiles = Get-ChildItem "audio_files\*.mp3" -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count
+$beforeFiles = Get-ChildItem "..\..\audio_files\*.mp3" -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count
 
 $audioRequest = @{
     key_words = "final test mountain peak"
@@ -44,7 +44,7 @@ try {
         Start-Sleep -Seconds 2
         
         # Check if new files were created
-        $afterFiles = Get-ChildItem "audio_files\*.mp3" -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count
+        $afterFiles = Get-ChildItem "..\..\audio_files\*.mp3" -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count
         $newFiles = $afterFiles - $beforeFiles
         
         if ($newFiles -ge 3) {
@@ -81,7 +81,7 @@ try {
 # Check all generated files
 Write-Host "`n4. Verifying Generated Files..." -ForegroundColor Yellow
 
-$allFiles = Get-ChildItem "audio_files\*.mp3" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 9
+$allFiles = Get-ChildItem "..\..\audio_files\*.mp3" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 9
 
 if ($allFiles) {
     Write-Host "   Recent audio files:" -ForegroundColor Green

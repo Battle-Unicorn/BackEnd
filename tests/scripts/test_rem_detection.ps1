@@ -5,14 +5,14 @@ $baseUrl = "http://localhost:8080"
 
 # Wysłij najpierw dane sensorowe
 Write-Host "`n1. Sending sensor data first..." -ForegroundColor Yellow
-$sensorData = Get-Content "Mock_Scripts/data_sensor_data.json" -Raw
+$sensorData = Get-Content "../mock_data/data_sensor_data.json" -Raw
 $result1 = Invoke-RestMethod -Uri "$baseUrl/embedded/sensor_data" -Method POST -Body $sensorData -ContentType "application/json"
 Write-Host "Sensor data sent: HR=$($result1.samples_received.hr)" -ForegroundColor Cyan
 
 # Wyślij flagi z REM=true
 Write-Host "`n2. Sending flags with sleep=true, atonia=true..." -ForegroundColor Yellow
 Start-Sleep -Seconds 1
-$flagsData = Get-Content "Mock_Scripts/data_flags_rem_true.json" -Raw
+$flagsData = Get-Content "../mock_data/data_flags_rem_true.json" -Raw
 $result2 = Invoke-RestMethod -Uri "$baseUrl/embedded/flags" -Method POST -Body $flagsData -ContentType "application/json"
 
 Write-Host "FLAGS RESULT:" -ForegroundColor Green

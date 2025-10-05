@@ -1,4 +1,4 @@
-# Test pełnego cyklu scenariuszy (więcej niż 7)
+# Test pełnego cyklu scenariuszy - ładowanie i polling
 Write-Host "=== Test Pełnego Cyklu Scenariuszy ===" -ForegroundColor Green
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
@@ -6,30 +6,28 @@ $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 try {
     Write-Host "Ładowanie scenariuszy..." -ForegroundColor Yellow
     
-    # Wczytujemy dane JSON z pliku
-    $jsonData = Get-Content -Path "mobile_scenarios.json" -Raw
+    # Wczytujemy dane JSON z pliku (poprawiona ścieżka)
+    $jsonData = Get-Content -Path "../mock_data/mobile_scenarios.json" -Raw
     
     $loadResponse = Invoke-RestMethod -Uri "http://localhost:8080/mobile/load_scenarios" -Method POST -Body $jsonData -ContentType "application/json" -WebSession $session
     Write-Host "Załadowano $($loadResponse.scenarios_count) scenariuszy`n" -ForegroundColor Cyan
     
-    # Testujemy więcej scenariuszy niż mamy (7 + 3 dodatkowe)
-    for ($i = 0; $i -lt 10; $i++) {
-        Write-Host "Pobieranie scenariusza $($i + 1)..." -ForegroundColor Yellow
-        $response = Invoke-RestMethod -Uri "http://localhost:8080/mobile/next_scenario" -Method GET -WebSession $session
+    # Testujemy polling endpoint kilka razy (sprawdzamy czy dane są poprawnie załadowane)
+    for ($i = 0; $i -lt 5; $i++) {
+        Write-Host "Test polling #$($i + 1)..." -ForegroundColor Yellow
+        $response = Invoke-RestMethod -Uri "http://localhost:8080/mobile/polling" -Method GET -WebSession $session
         
-        Write-Host "  Index: $($response.scenario_index) | Słowa: $($response.scenario.key_words)" -ForegroundColor White
-        Write-Host "  Miejsce: $($response.scenario.place)" -ForegroundColor Gray
+        Write-Host "  Mobile ID: $($response.mobile_id) | REM: $($response.rem) | Faza: $($response.current_rem_phase)" -ForegroundColor White
         
-        if ($i -eq 6) {
-            Write-Host "  ^ Ostatni scenariusz w pliku" -ForegroundColor Red
-        }
-        if ($i -eq 7) {
-            Write-Host "  ^ Cykl się restartował - pierwszy scenariusz ponownie" -ForegroundColor Green
-        }
+        # Testujemy też detailed format
+        $detailedResponse = Invoke-RestMethod -Uri "http://localhost:8080/mobile/polling?detailed=true" -Method GET -WebSession $session
+        Write-Host "  Detailed format OK: Status=$($detailedResponse.status)" -ForegroundColor Gray
         Write-Host ""
+        
+        Start-Sleep -Seconds 1
     }
     
-    Write-Host "SUCCESS: Test cykliczności przeszedł pomyślnie!" -ForegroundColor Green
+    Write-Host "SUCCESS: Test ładowania scenariuszy i polling przeszedł pomyślnie!" -ForegroundColor Green
     
 } catch {
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red

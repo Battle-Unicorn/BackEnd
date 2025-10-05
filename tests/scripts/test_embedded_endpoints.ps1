@@ -21,7 +21,7 @@ Write-Host "`n2. Testing /embedded/flags..." -ForegroundColor Yellow
 Start-Sleep -Seconds 2
 
 try {
-    $flagsData = Get-Content "Mock_Scripts/data_flags.json" -Raw
+    $flagsData = Get-Content "../mock_data/data_flags.json" -Raw
     $result2 = Invoke-RestMethod -Uri "$baseUrl/embedded/flags" -Method POST -Body $flagsData -ContentType "application/json"
     Write-Host "SUCCESS: Flags processed!" -ForegroundColor Green
     Write-Host "REM Detected: $($result2.analysis_result.rem_detected)" -ForegroundColor Cyan
